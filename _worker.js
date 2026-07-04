@@ -3,6 +3,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     
+    // 1. 静态文件托管
     if (!url.pathname.startsWith('/api/')) {
       return env.ASSETS.fetch(request);
     }
@@ -101,7 +102,7 @@ export default {
         });
       }
 
-      // [PUT] 更新阅读进度 (删除 scroll_top)
+      // [PUT] 更新阅读进度
       const progressMatch = path.match(/^\/api\/books\/([^\/]+)\/progress$/);
       if (progressMatch && request.method === 'PUT') {
         const id = decodeURIComponent(progressMatch[1]);
