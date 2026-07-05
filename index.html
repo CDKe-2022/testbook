@@ -1,691 +1,1136 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>极简阅读器</title>
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#F4F1EA">
-
-<script>
-  (function() {
-    try {
-      const settings = JSON.parse(localStorage.getItem('reader_settings_v13') || '{"theme":"default"}');
-      const theme = settings.theme || 'default';
-      document.documentElement.setAttribute('data-theme', theme);
-    } catch(e) {}
-  })();
-</script>
-
-<style>
-:root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); --header-h: 56px; --content-max-w: 720px; --bg: #F4F1EA; --text: #2D2D2D; --text-secondary: #888888; --card: rgba(255,255,255,0.5); --border: rgba(0,0,0,0.04); --accent: #9C8163; --header-bg: rgba(244, 241, 234, 0.85); --scrollbar-thumb: rgba(0,0,0,0.15); --scrollbar-thumb-hover: rgba(0,0,0,0.3); }
-[data-theme="white"] { --bg: #FFFFFF; --text: #1A1A1A; --card: rgba(0,0,0,0.02); --border: rgba(0,0,0,0.06); --accent: #0055A4; --header-bg: rgba(255, 255, 255, 0.85); --scrollbar-thumb: rgba(0,0,0,0.15); --scrollbar-thumb-hover: rgba(0,0,0,0.3); }
-[data-theme="green"] { --bg: #cce8cf; --text: #2f3e2f; --text-secondary: #5c705c; --card: rgba(255,255,255,0.4); --border: rgba(0,0,0,0.05); --accent: #4a7c59; --header-bg: rgba(204, 232, 207, 0.85); --scrollbar-thumb: rgba(0,0,0,0.15); --scrollbar-thumb-hover: rgba(0,0,0,0.3); }
-[data-theme="sepia"] { --bg: #f4ecd8; --text: #4a4035; --text-secondary: #8a7d6b; --card: rgba(255,255,255,0.4); --border: rgba(0,0,0,0.05); --accent: #8d6e63; --header-bg: rgba(244, 236, 216, 0.85); --scrollbar-thumb: rgba(0,0,0,0.15); --scrollbar-thumb-hover: rgba(0,0,0,0.3); }
-[data-theme="dark"] { --bg: #161618; --text: #D4D4D8; --text-secondary: #71717A; --card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --accent: #D4AF37; --header-bg: rgba(22, 22, 24, 0.85); --scrollbar-thumb: rgba(255,255,255,0.15); --scrollbar-thumb-hover: rgba(255,255,255,0.3); }
-
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif; transition: background .4s, color .4s; }
-.page::-webkit-scrollbar, #drawer-toc .list::-webkit-scrollbar { width: 6px; }
-.page::-webkit-scrollbar-track, #drawer-toc .list::-webkit-scrollbar-track { background: transparent; }
-.page::-webkit-scrollbar-thumb, #drawer-toc .list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; transition: background .2s; }
-.page::-webkit-scrollbar-thumb:hover, #drawer-toc .list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-.page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; transition: opacity .3s, visibility .3s; }
-.page.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
-#header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: var(--header-h); display: flex; align-items: center; justify-content: center; background: var(--header-bg); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); transform: translateY(-100%); transition: transform .35s cubic-bezier(.4,0,.2,1); }
-body.ui-visible #header { transform: translateY(0); }
-.header-inner { width: 100%; max-width: var(--content-max-w); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
-#header .title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; text-align: center; margin: 0 10px; letter-spacing: 0.5px; }
-.icon-btn { background: none; border: none; color: var(--text); font-size: 20px; padding: 8px; cursor: pointer; border-radius: 50%; transition: background .2s; display: flex; align-items: center; justify-content: center; }
-.icon-btn:hover { background: var(--border); }
-.header-actions { display: flex; gap: 4px; }
-
-#content-wrapper { max-width: var(--content-max-w); margin: 0 auto; padding: calc(var(--header-h) + 40px) 24px 100px; font-size: 18px; line-height: 1.9; min-height: 100%; letter-spacing: 0.5px; }
-#content-wrapper p { text-indent: 2em; margin-bottom: 1.2em; text-align: left; }
-#content-wrapper .chapter-title { font-size: 22px; font-weight: 600; text-align: center; margin: 2.5em 0 0.8em; padding-bottom: 12px; color: var(--accent); scroll-margin-top: calc(var(--header-h) + 30px); position: relative; }
-#content-wrapper .chapter-title::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 240px; height: 2px; background: radial-gradient(ellipse at center, var(--accent) 0%, transparent 60%); opacity: 0.5; }
-
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 200; opacity: 0; visibility: hidden; transition: all .3s; backdrop-filter: blur(4px); }
-.overlay.active { opacity: 1; visibility: visible; }
-#drawer-toc { position: fixed; top: 0; left: 0; bottom: 0; width: 85%; max-width: 340px; z-index: 210; background: var(--bg); transform: translateX(-100%); transition: transform .35s cubic-bezier(.4,0,.2,1); display: flex; flex-direction: column; box-shadow: 4px 0 24px rgba(0,0,0,0.05); }
-#drawer-toc.active { transform: translateX(0); }
-#drawer-toc .header { padding: 24px; border-bottom: 1px solid var(--border); font-size: 18px; font-weight: 600; padding-top: calc(24px + var(--sat)); letter-spacing: 1px; }
-#drawer-toc .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; }
-#drawer-toc .item { padding: 14px 16px; border-radius: 8px; font-size: 15px; color: var(--text-secondary); cursor: pointer; white-space: normal; line-height: 1.5; margin-bottom: 4px; transition: all .2s; }
-#drawer-toc .item:hover { background: var(--card); color: var(--text); }
-#drawer-toc .item.active { background: var(--accent); color: #fff; font-weight: 500; box-shadow: 0 4px 12px rgba(156, 129, 99, 0.2); }
-#drawer-settings { position: fixed; left: 0; right: 0; bottom: 0; z-index: 210; background: var(--bg); border-radius: 20px 20px 0 0; transform: translateY(100%); transition: transform .35s cubic-bezier(.4,0,.2,1); padding: 24px; padding-bottom: calc(24px + var(--sab)); max-width: 500px; margin: 0 auto; box-shadow: 0 -4px 24px rgba(0,0,0,0.05); }
-#drawer-settings.active { transform: translateY(0); }
-.setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
-.setting-label { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
-.setting-btns { display: flex; gap: 12px; align-items: center; }
-.setting-btns button { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; cursor: pointer; transition: all .2s; }
-.setting-btns button:hover { border-color: var(--accent); }
-.setting-btns button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.theme-dots { display: flex; gap: 16px; }
-.theme-dot { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; position: relative; transition: transform .2s; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-.theme-dot:hover { transform: scale(1.1); }
-.theme-dot.active { border-color: var(--accent); transform: scale(1.15); }
-.theme-dot[data-t="white"] { background: #fff; border: 1px solid #eee; }
-.theme-dot[data-t="green"] { background: #cce8cf; }
-.theme-dot[data-t="default"] { background: #F4F1EA; }
-.theme-dot[data-t="sepia"] { background: #f4ecd8; }
-.theme-dot[data-t="dark"] { background: #161618; border: 1px solid #333; }
-
-/* v1.1 书架样式重构 */
-#bookshelf { padding: 24px; padding-top: calc(24px + var(--sat)); max-width: 800px; margin: 0 auto; }
-.shelf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 12px; }
-.shelf-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; flex-shrink: 0; }
-.header-btns { display: flex; gap: 10px; }
-.btn-secondary { padding: 8px 16px; border-radius: 20px; background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; transition: all .2s; }
-.btn-secondary:hover { border-color: var(--accent); color: var(--text); }
-.btn-import { padding: 8px 18px; border-radius: 20px; background: var(--accent); color: #fff; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(156, 129, 99, 0.15); }
-.btn-import:hover { opacity: 0.9; transform: translateY(-1px); }
-.btn-import:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.book-list { display: flex; flex-direction: column; gap: 16px; }
-
-.book-item { 
-    background: var(--card); 
-    border-radius: 16px; 
-    border: 1px solid var(--border); 
-    display: flex; 
-    align-items: center; /* 垂直居中对齐 */
-    overflow: hidden; 
-    transition: all .25s; 
-    height: 76px; /* 固定高度，保持整洁 */
-}
-.book-item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
-
-/* 左侧书脊 */
-.btn-spine { 
-    width: 12px; 
-    height: 100%; 
-    border: none; 
-    background: var(--accent); 
-    border-radius: 16px 0 0 16px; 
-    cursor: pointer; 
-    transition: width .2s, background .2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255,255,255,0.8);
-}
-.btn-spine:hover { width: 18px; background: rgba(0,0,0,0.1); }
-.btn-spine:active { background: rgba(0,0,0,0.2); }
-
-/* 中间主体 */
-.book-main { 
-    flex: 1; 
-    min-width: 0; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    padding: 0 16px; 
-    cursor: pointer; 
-    height: 100%; 
-}
-.book-name { font-size: 17px; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.progress-info { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
-.progress-text { font-size: 12px; color: var(--text-secondary); line-height: 1.2; height: 14px; }
-.progress-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 2px; }
-.progress-fill { height: 100%; background: linear-gradient(270deg, var(--accent), transparent); border-radius: 2px; transition: width .3s; }
-
-/* 右侧操作 */
-.book-actions { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 4px; 
-    padding: 0 12px 0 8px; 
-    height: 100%;
-    justify-content: center;
-}
-.btn-icon-action { width: 28px; height: 28px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; }
-.btn-icon-action:hover { background: var(--border); color: var(--text); }
-.btn-icon-action.btn-delete { color: #ff4d4f; }
-.btn-icon-action.btn-delete:hover { background: rgba(255, 77, 79, 0.1); }
-
-.empty-tip { text-align: center; padding: 80px 20px; color: var(--text-secondary); font-size: 15px; line-height: 1.6; }
-#loading-mask { position: fixed; inset: 0; z-index: 999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 16px; color: var(--text-secondary); transition: opacity .3s; gap: 12px; }
-#loading-mask.hidden { opacity: 0; pointer-events: none; }
-.loading-spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-@media (max-width: 600px) { 
-  #content-wrapper { font-size: 16px; padding-left: 20px; padding-right: 20px; line-height: 1.8; } 
-  #content-wrapper .chapter-title { font-size: 20px; } 
-  .shelf-header h1 { font-size: 24px; } 
-  .book-name { font-size: 16px; }
-  .btn-spine { width: 10px; }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工具集 · 效率工具箱</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@600;700&family=Fraunces:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #faf8f3; --bg-2: #f0ebe0; --ink: #1a2e2a; --ink-soft: #4a5a55; --muted: #8b9690;
+      --accent: #c2410c; --accent-soft: #fde4d4; --border: #e8e2d5; --green: #1a3a32; --green-2: #2d5247; --green-light: #f0f4f2;
+      --shadow-sm: 0 1px 2px rgba(26,46,42,.04), 0 4px 12px rgba(26,46,42,.06);
+      --shadow-md: 0 4px 12px rgba(26,46,42,.08), 0 12px 32px rgba(26,46,42,.1);
+      --shadow-lg: 0 8px 24px rgba(26,46,42,.1), 0 24px 56px rgba(26,46,42,.15);
+      --transition: all .3s cubic-bezier(.4,0,.2,1);
+    }
+    *{box-sizing:border-box} 
+    html,body{margin:0;padding:0}
+    body{font-family:'Noto Sans SC',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    
+    /* 滚动条美化 */
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-track{background:var(--bg-2)}
+    ::-webkit-scrollbar-thumb{background:var(--muted);border-radius:4px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--ink-soft)}
+    
+    /* 按钮系统 */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:var(--transition);font-family:inherit;white-space:nowrap;line-height:1.5;position:relative;overflow:hidden}
+    .btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:rgba(255,255,255,.2);transform:translate(-50%,-50%);transition:width .6s,height .6s}
+    .btn:active::after{width:300px;height:300px}
+    .btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+    .btn-primary{background:var(--green);color:#fff;box-shadow:var(--shadow-sm)}
+    .btn-primary:hover{background:var(--green-2);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+    .btn-ghost{background:transparent;color:var(--ink-soft);border-color:var(--border)}
+    .btn-ghost:hover{background:var(--bg-2);color:var(--ink);border-color:var(--ink-soft);transform:translateY(-1px)}
+    .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none!important;pointer-events:none}
+    
+    /* 卡片系统 */
+    .tool-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:28px;cursor:pointer;transition:var(--transition);height:100%;text-decoration:none;color:inherit;display:block;position:relative;overflow:hidden}
+    .tool-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:4px;background:linear-gradient(90deg,var(--green),var(--green-2));transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+    .tool-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:var(--green-2)}
+    .tool-card:hover::before{transform:scaleX(1)}
+    .tool-icon{width:56px;height:56px;background:var(--green-light);border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--green);margin-bottom:24px;transition:var(--transition)}
+    .tool-card:hover .tool-icon{background:var(--green);color:#fff;transform:scale(1.08) rotate(-5deg)}
+    
+    /* 输入系统 */
+    .input,.textarea{width:100%;padding:16px 20px;border:1px solid var(--border);border-radius:12px;background:#fff;font-family:inherit;font-size:16px;color:var(--ink);transition:var(--transition)}
+    .textarea{min-height:200px;resize:vertical;line-height:1.6}
+    .input:focus,.textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 4px rgba(26,58,50,.08)}
+    
+    /* 结果展示 */
+    .result-box{background:var(--green-light);border:1px solid var(--border);border-radius:12px;padding:24px;min-height:96px;font-family:'Noto Serif SC',serif;font-size:24px;color:var(--green);font-weight:600;line-height:1.6;word-break:break-all;display:flex;align-items:center;transition:var(--transition);cursor:pointer;position:relative}
+    .result-box:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+    .result-box .copy-icon{position:absolute;top:12px;right:12px;opacity:0;transition:opacity .2s;color:var(--green);width:18px;height:18px}
+    .result-box:hover .copy-icon{opacity:0.6}
+    
+    /* 拖拽区域 - 修复display问题 */
+    .drop-zone{display:block;border:2px dashed var(--border);border-radius:20px;padding:56px 32px;text-align:center;background:#fff;transition:var(--transition);cursor:pointer;position:relative;overflow:hidden}
+    .drop-zone::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(26,58,50,.03) 0%,transparent 70%);opacity:0;transition:opacity .3s ease}
+    .drop-zone.dragover{border-color:var(--green);background:var(--green-light);transform:scale(1.01)}
+    .drop-zone.dragover::before{opacity:1}
+    .drop-zone:hover{border-color:var(--ink-soft);background:var(--bg-2)}
+    .drop-zone .drop-zone-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%}
+    .drop-zone .tool-icon{margin-bottom:16px} /* 统一间距 */
+    .drop-zone.compact{padding:24px} /* 用于QR Logo等小尺寸DropZone */
+    
+    /* 缩略图 */
+    .thumb{position:relative;width:100%;aspect-ratio:1;background:var(--bg-2);border-radius:12px;overflow:hidden;border:1px solid var(--border);transition:var(--transition);cursor:grab}
+    .thumb:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+    .thumb img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+    .thumb-remove{position:absolute;top:6px;right:6px;width:24px;height:24px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+    .thumb:hover .thumb-remove{opacity:1}
+    .thumb-orient{position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px}
+    .thumb-num{position:absolute;top:6px;left:6px;background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
+    .thumb.dragging{opacity:.4}
+    
+    /* 选项卡片 */
+    .orient-option{flex:1;padding:16px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer;text-align:center;transition:var(--transition);font-size:14px;color:var(--ink-soft);min-width:0}
+    .orient-option:hover{border-color:var(--ink-soft);transform:translateY(-2px)}
+    .orient-option.active{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 4px 12px rgba(26,50,50,.2)}
+    
+    /* 提示框 */
+    .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--green);color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg);z-index:1000;transition:transform .4s cubic-bezier(.16,1,.3,1);display:flex;align-items:center;gap:8px;font-weight:500}
+    .toast.show{transform:translateX(-50%) translateY(0)}
+    .toast.error{background:var(--accent)}
+    
+    /* 加载动画 */
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    
+    /* 工具编号 */
+    .tool-num{display:inline-flex;align-items:center;gap:6px;font-family:'Fraunces',serif;font-size:12px;letter-spacing:.15em;color:var(--muted);text-transform:uppercase}
+    
+    /* 信息卡片 */
+    .info-card{background:var(--green-light);border:1px solid var(--border);border-radius:16px;padding:24px;transition:var(--transition)}
+    .info-card:hover{box-shadow:var(--shadow-sm)}
+    
+    /* 隐藏类 */
+    .hidden{display:none!important}
+    
+    /* 结果容器 */
+    .result-container{position:relative}
+    
+    /* 统计盒子 */
+    .stat-box{background:var(--bg-2);border-radius:12px;padding:16px;text-align:center;transition:var(--transition)}
+    .stat-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+    .stat-box .val{font-size:24px;font-weight:700;color:var(--green)}
+    .stat-box .lbl{font-size:12px;color:var(--muted);margin-top:4px}
+    
+    /* 滑块 */
+    .range-slider{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:var(--border);outline:none}
+    .range-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--green);cursor:pointer;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .2s}
+    .range-slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+    
+    /* 二维码预览 */
+    .qr-preview{background:#fff;padding:24px;border-radius:20px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;min-height:300px;transition:var(--transition)}
+    .qr-preview:hover{box-shadow:var(--shadow-sm)}
+    .qr-preview canvas,.qr-preview img{max-width:100%;max-height:400px;image-rendering:pixelated}
+    
+    /* 格式卡片 */
+    .format-card{cursor:pointer;border:2px solid transparent;transition:var(--transition);border-radius:12px}
+    .format-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+    .format-card.active{border-color:var(--green);background:var(--green-light)}
+    
+    /* 模拟结果 */
+    .mock-result{font-family:monospace;font-size:14px;line-height:1.8;white-space:pre-wrap;background:var(--bg-2);padding:20px;border-radius:12px;min-height:300px;max-height:500px;overflow-y:auto;border:1px solid var(--border)}
+    
+    /* 日期结果卡片 */
+    .date-result-card{background:var(--green-light);border:1px solid var(--border);border-radius:20px;padding:32px;text-align:center;transition:var(--transition)}
+    .date-result-card:hover{box-shadow:var(--shadow-md)}
+    .date-result-card .big-num{font-size:48px;font-weight:800;color:var(--green);line-height:1}
+    .date-result-card .big-lbl{font-size:14px;color:var(--ink-soft);margin-top:8px}
+    
+    /* 页面过渡动画 */
+    .page-enter{animation:pageEnter .4s ease forwards}
+    @keyframes pageEnter{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+      .tool-card{padding:20px}
+      .tool-icon{width:48px;height:48px;margin-bottom:16px}
+      .btn{padding:8px 16px;font-size:13px}
+      .input,.textarea{padding:12px 16px;font-size:14px}
+      .result-box{font-size:20px;padding:16px}
+      .drop-zone{padding:32px 16px}
+      .split-opts-container{flex-wrap:wrap} /* 修复小屏幕溢出 */
+    }
+    
+    /* 无障碍焦点样式 */
+    :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+    
+    /* 背景装饰 */
+    .bg-decoration{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden}
+    .bg-decoration::before{content:'';position:absolute;top:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(circle,rgba(26,58,50,.05) 0%,transparent 70%);border-radius:50%}
+    .bg-decoration::after{content:'';position:absolute;bottom:-20%;left:-10%;width:50%;height:50%;background:radial-gradient(circle,rgba(194,65,12,.03) 0%,transparent 70%);border-radius:50%}
+  </style>
 </head>
 <body>
+<div class="bg-decoration"></div>
+<div id="app" class="relative z-10"></div>
+<script>
+// ═══════════════════════════════════════════
+// 1. 工具函数与图标系统
+// ═══════════════════════════════════════════
+const Icons = {
+  tool1: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  tool2: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>',
+  tool3: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>',
+  tool4: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  tool5: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>',
+  tool6: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z"/></svg>',
+  tool7: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>',
+  tool8: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+  get: (name) => Icons[name] || ''
+};
 
-<div id="loading-mask" class="hidden"><div class="loading-spinner"></div><div id="loading-text">正在解析书籍...</div></div>
-<div id="bookshelf" class="page">
-  <div class="shelf-header">
-    <h1>书架</h1>
-    <div class="header-btns">
-      <button id="clear-cache-btn" class="btn-secondary">清理缓存</button>
-      <button id="import-btn" class="btn-import">+ 导入</button>
+const Utils = {
+  _toastTimer: null, _toastEl: null,
+  showToast(msg, isError = false) {
+    if (!this._toastEl) {
+      this._toastEl = Object.assign(document.createElement('div'), { className: 'toast' });
+      this._toastEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span>`;
+      document.body.appendChild(this._toastEl);
+    }
+    this._toastEl.querySelector('span').textContent = msg;
+    this._toastEl.classList.toggle('error', isError);
+    this._toastEl.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this._toastEl.classList.remove('show'), 2500);
+  },
+  copy(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise((res, rej) => {
+      const ta = Object.assign(document.createElement('textarea'), { value: text, style: 'position:fixed;opacity:0' });
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); res(); } catch (e) { rej(e); }
+      document.body.removeChild(ta);
+    });
+  },
+  copyImage(canvas) {
+    return new Promise((res, rej) => {
+      canvas.toBlob(blob => {
+        if (!blob) return rej('Canvas to Blob failed');
+        try { navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(res).catch(rej); } catch (e) { rej(e); }
+      }, 'image/png');
+    });
+  },
+  downloadBlob(bytes, name, type = 'application/pdf') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([bytes], { type }));
+    a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  },
+  downloadDataURL(dataUrl, name) {
+    const a = document.createElement('a'); a.href = dataUrl; a.download = name; a.click();
+  },
+  isHeic(f) { const t = f.type.toLowerCase(), n = f.name.toLowerCase(); return t.includes('heic') || t.includes('heif') || n.endsWith('.heic') || n.endsWith('.heif'); },
+  debounce(fn, delay) { let t; return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), delay); }; },
+  formatSize(bytes) { if (bytes < 1024) return bytes + ' B'; if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'; return (bytes / 1048576).toFixed(2) + ' MB'; },
+  formatDate(d) {
+    if (!d) return '';
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+    const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+    return `${y}-${m}-${day} (周${weekDays[d.getDay()]})`;
+  },
+  numberToChinese(num) {
+    const str = String(num).trim(); if (!str || isNaN(num)) return ''; if (parseFloat(str) === 0) return '零元整';
+    const neg = str.startsWith('-'), abs = neg ? str.slice(1) : str;
+    const [rawInt, rawDec = ''] = abs.split('.');
+    const intStr = rawInt.replace(/^0+/, '') || '0', decStr = rawDec.slice(0, 2);
+    if (intStr.length > 16) return '数字超出支持范围';
+    const D = '零壹贰叁肆伍陆柒捌玖', R = ['', '拾', '佰', '仟'], U = ['', '万', '亿', '万亿'];
+    const groups = []; for (let i = intStr.length; i > 0; i -= 4) groups.unshift(intStr.slice(Math.max(0, i - 4), i));
+    let intRes = '', needZero = false;
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i], uIdx = groups.length - 1 - i; let gStr = '', zc = 0, allZero = true;
+      for (let j = 0; j < g.length; j++) {
+        const d = +g[j], rIdx = g.length - 1 - j;
+        if (d === 0) zc++; else { allZero = false; if (zc > 0 || (j === 0 && needZero)) gStr += '零'; gStr += D[d] + R[rIdx]; zc = 0; needZero = false; }
+      }
+      if (!allZero) { intRes += gStr + U[uIdx]; needZero = zc > 0; } else needZero = true;
+    }
+    let decRes = ''; if (decStr) { if (+decStr[0]) decRes += D[+decStr[0]] + '角'; if (decStr[1] && +decStr[1]) decRes += D[+decStr[1]] + '分'; }
+    return (neg ? '负' : '') + (intRes ? intRes + '元' : '') + (decRes || (intRes ? '整' : ''));
+  },
+  convertCase(text, mode) {
+    if (!text) return '';
+    switch(mode) {
+      case 'upper': return text.toUpperCase();
+      case 'lower': return text.toLowerCase();
+      case 'sentence': return text.toLowerCase().replace(/(^\s*\p{L}|[.!?。！？]\s*\p{L})/gu, c => c.toUpperCase());
+      case 'title': return text.toLowerCase().replace(/\b\p{L}/gu, c => c.toUpperCase());
+      case 'first': return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+      default: return text;
+    }
+  }
+};
+
+// ═══════════════════════════════════════════
+// 2. 状态管理 - 改进：get方法返回深拷贝
+// ═══════════════════════════════════════════
+const createStore = (initial) => {
+  let state = structuredClone(initial);
+  return {
+    get: () => structuredClone(state), // 返回深拷贝，防止外部直接修改
+    set: (updater) => { state = typeof updater === 'function' ? updater(structuredClone(state)) : updater; }
+  };
+};
+
+const imageStore = createStore({ files: [], mode: 'fit', orient: 'auto', quality: 0.8 });
+const pdfStore = createStore({ mode: 'split', split: { file: null, fileName: '', pageCount: 0, method: 'pages', pages: 1, start: 1, end: 1 }, merge: { files: [] } });
+const compressStore = createStore({ file: null, url: '', name: '', origSize: 0, quality: 0.8, format: 'jpeg', scale: 100, resultBlob: null, resultUrl: '', estimates: { jpeg: 0, webp: 0, png: 0 } });
+const textStore = createStore({ input: '', mode: 'upper' });
+const qrStore = createStore({ text: '', logoUrl: '', mode: 'generate', parseResult: '' });
+const mockStore = createStore({
+  type: 'uuid', count: 10,
+  pwdLen: 12, pwdOpts: { upper: true, lower: true, num: true, sym: true },
+  numMin: 1, numMax: 100, numDec: 2,
+  listText: '', listCount: 1,
+  result: ''
+});
+const dateStore = createStore({
+  mode: 'diff',
+  startDate: '', endDate: '',
+  baseDate: '', offset: 1, unit: 'days',
+  result: null
+});
+
+let sortableInst = null, compressTaskId = 0;
+
+function resetStore(store, initial) {
+  const oldState = store.get();
+  if (oldState.files) oldState.files.forEach(f => f.url && URL.revokeObjectURL(f.url));
+  if (oldState.url) URL.revokeObjectURL(oldState.url);
+  if (oldState.resultUrl) URL.revokeObjectURL(oldState.resultUrl);
+  if (oldState.logoUrl) URL.revokeObjectURL(oldState.logoUrl);
+  store.set(structuredClone(initial));
+  const base = (location.hash.slice(1) || '/').split('?')[0];
+  (ROUTES[base] || renderHome)();
+}
+
+// ═══════════════════════════════════════════
+// 3. Web组件 - 修复display问题
+// ═══════════════════════════════════════════
+class DropZone extends HTMLElement {
+  connectedCallback() {
+    if (this._init) return; this._init = true;
+    const text = this.getAttribute('text') || '点击或拖拽文件到此处', hint = this.getAttribute('hint') || '';
+    const accept = this.getAttribute('accept') || '*/*', multi = this.hasAttribute('multiple') ? 'multiple' : '';
+    const compact = this.hasAttribute('compact') ? 'compact' : ''; // 新增compact属性
+    this.classList.add('drop-zone');
+    if (compact) this.classList.add(compact);
+    this.innerHTML = `<input type="file" class="hidden" ${multi} accept="${accept}"><div class="drop-zone-inner"><div class="tool-icon mx-auto" style="width:52px;height:52px">${Icons.tool4}</div><p class="font-medium text-[--ink] mb-1 text-base">${text}</p><p class="text-xs text-[--muted]">${hint}</p></div>`;
+    const input = this.querySelector('input');
+    this.addEventListener('click', () => input.click());
+    this.addEventListener('dragover', e => { e.preventDefault(); this.classList.add('dragover'); });
+    this.addEventListener('dragleave', e => { e.preventDefault(); this.classList.remove('dragover'); });
+    this.addEventListener('drop', e => { e.preventDefault(); this.classList.remove('dragover'); if (e.dataTransfer.files.length) this.dispatchEvent(new CustomEvent('files-selected', { detail: e.dataTransfer.files, bubbles: true })); });
+    input.addEventListener('change', e => { if (e.target.files.length) this.dispatchEvent(new CustomEvent('files-selected', { detail: e.target.files, bubbles: true })); });
+  }
+}
+customElements.define('drop-zone', DropZone);
+
+// ═══════════════════════════════════════════
+// 4. 配置 (按拼音首字母排序)
+// ═══════════════════════════════════════════
+const TOOLS = [
+  { id: 'text-case', name: '大小写转换', desc: '一键转换英文大小写，支持句首、词首等5种模式。', icon: 'tool5' },
+  { id: 'qrcode-generator', name: '二维码生成与解析', desc: '生成高清二维码，或上传图片识别二维码内容。', icon: 'tool6' },
+  { id: 'pdf-split-merge', name: 'PDF拆分与合并', desc: '轻松拆分PDF文件或合并多个PDF文档，本地处理。', icon: 'tool3' },
+  { id: 'date-calculator', name: '日期计算器', desc: '计算日期差值、工作日天数，或推算合同到期日。', icon: 'tool8' },
+  { id: 'number-to-chinese', name: '数字转中文大写', desc: '输入阿拉伯数字，自动转换为人民币大写金额格式。', icon: 'tool1' },
+  { id: 'mock-generator', name: '随机数据生成', desc: '批量生成UUID、随机密码、测试数据或幸运抽签。', icon: 'tool7' },
+  { id: 'image-compress', name: '图片压缩', desc: '智能压缩图片体积，支持格式转换与多格式预估。', icon: 'tool4' },
+  { id: 'image-to-pdf', name: '图片转 PDF', desc: '将多张图片合并为单个 PDF 文件，支持排序与压缩。', icon: 'tool2' }
+];
+const IMG_OPTS = { mode: [{ v: 'fit', l: '贴合图片', s: '无白边' }, { v: 'a4', l: 'A4 标准页', s: '带白边' }], orient: [{ v: 'auto', l: '自动' }, { v: 'portrait', l: '纵向' }, { v: 'landscape', l: '横向' }], quality: [{ v: '1', l: '原图' }, { v: '0.8', l: '平衡' }, { v: '0.5', l: '极限' }] };
+const CASE_OPTS = [{ v: 'upper', l: '全部大写' }, { v: 'lower', l: '全部小写' }, { v: 'sentence', l: '句首大写' }, { v: 'title', l: '词首大写' }, { v: 'first', l: '仅首字母大写' }];
+
+// ═══════════════════════════════════════════
+// 5. 渲染辅助函数
+// ═══════════════════════════════════════════
+const app = document.getElementById('app');
+const $header = (title, num) => `<header class="max-w-5xl mx-auto px-6 py-8 flex items-center gap-4 page-enter"><button class="btn btn-ghost btn-sm" data-action="home" aria-label="返回首页"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> 返回</button><div><div class="tool-num">${num}</div><h1 class="text-2xl font-bold text-[--ink]">${title}</h1></div></header>`;
+const $optGroup = (key, cur) => IMG_OPTS[key].map(o => `<div class="orient-option ${String(cur) === o.v ? 'active' : ''}" data-${key}="${o.v}" role="button" tabindex="0">${o.l}${o.s ? `<br><span class="text-xs opacity-70">${o.s}</span>` : ''}</div>`).join('');
+const $toolCard = (t, i) => `<a href="#/${t.id}" class="tool-card page-enter" style="animation-delay:${i * 0.05}s"><div class="tool-icon">${Icons.get(t.icon)}</div><div class="flex items-center justify-between mb-3"><h3 class="text-xl font-semibold text-[--ink]">${t.name}</h3><span class="tool-num">${String(i + 1).padStart(2, '0')}</span></div><p class="text-sm text-[--ink-soft] leading-relaxed mb-6">${t.desc}</p><div class="flex items-center gap-2 text-xs text-[--green] font-medium"><span>进入工具</span><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></a>`;
+const $infoCard = (title, items) => `<div class="info-card mt-12"><h4 class="text-sm font-semibold text-[--green] mb-3 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7 4V7.5M7 9.5V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>${title}</h4><ul class="text-xs text-[--ink-soft] space-y-1.5 leading-relaxed">${items.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
+
+// ═══════════════════════════════════════════
+// 6. 页面渲染器
+// ═══════════════════════════════════════════
+function renderHome() {
+  app.innerHTML = `<main class="max-w-6xl mx-auto px-6 py-16"><div class="text-center mb-12 page-enter"><h1 class="text-5xl font-bold mb-4" style="background:linear-gradient(135deg,var(--green) 0%,var(--green-2) 50%,var(--accent) 100%);-webkit-background-clip:text;color:transparent">效率工具集</h1><p class="text-[--ink-soft] text-lg mb-8">简洁、纯粹、专注的本地化工具，解决日常办公需求。</p><div class="flex gap-8 justify-center text-sm text-[--ink-soft]"><div><span class="font-bold text-[--green] text-xl">${TOOLS.length}</span> 个实用工具</div><div><span class="font-bold text-[--green] text-xl">100%</span> 本地运行</div><div><span class="font-bold text-[--green] text-xl">0</span> 数据上传</div></div></div><div id="tools-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${TOOLS.map($toolCard).join('')}</div></main>`;
+}
+
+// Tool 01: 大小写转换
+function renderTextCaseTool() {
+  const S = textStore.get();
+  app.innerHTML = `${$header('大小写转换', 'Tool 01')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter"><div class="flex flex-wrap gap-3 mb-6 justify-center">${CASE_OPTS.map(o => `<button class="btn ${S.mode === o.v ? 'btn-primary' : 'btn-ghost'}" data-case-mode="${o.v}">${o.l}</button>`).join('')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">输入文本</label><textarea id="tc-input" class="textarea" placeholder="在此输入或粘贴文本...">${S.input}</textarea></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">转换结果</label><textarea id="tc-output" class="textarea bg-[--green-light] text-[--green]" readonly></textarea></div></div><div class="flex gap-3 mt-6 justify-center"><button class="btn btn-primary" id="tc-copy-btn">复制结果</button><button class="btn btn-ghost" id="reset-text">重置</button></div><div class="grid grid-cols-3 gap-4 mt-8 max-w-md mx-auto"><div class="stat-box"><div class="val" id="tc-chars">0</div><div class="lbl">字符数</div></div><div class="stat-box"><div class="val" id="tc-words">0</div><div class="lbl">单词数</div></div><div class="stat-box"><div class="val" id="tc-lines">0</div><div class="lbl">行数</div></div></div>${$infoCard('使用说明', ['全部大写/小写：转换所有英文字母', '句首大写：每句话的第一个字母大写', '词首大写：每个单词的首字母大写', '仅首字母大写：整个文本的第一个字母大写，其余小写'])}</main>`;
+  doTextCase();
+}
+
+// Tool 02: 二维码生成与解析
+function renderQrTool() {
+  const S = qrStore.get();
+  app.innerHTML = `${$header('二维码生成与解析', 'Tool 02')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter">
+    <div class="flex gap-4 mb-8 justify-center">
+      <button class="btn ${S.mode === 'generate' ? 'btn-primary' : 'btn-ghost'}" data-qr-mode="generate">生成二维码</button>
+      <button class="btn ${S.mode === 'parse' ? 'btn-primary' : 'btn-ghost'}" data-qr-mode="parse">解析二维码</button>
     </div>
-  </div>
-  <input type="file" id="file-input" accept=".txt,.TXT,text/plain" hidden>
-  <div class="book-list" id="book-list"></div>
-</div>
-
-<div id="reader" class="page hidden">
-  <header id="header">
-    <div class="header-inner">
-      <button class="icon-btn" id="btn-back" title="返回"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-      <div class="title" id="header-title">准备中...</div>
-      <div class="header-actions">
-        <button class="icon-btn" id="btn-night-mode" title="夜间模式"></button>
-        <button class="icon-btn" id="btn-settings" title="设置" style="font-size: 15px; font-weight: 600; font-family: serif;">Aa</button>
-        <button class="icon-btn" id="btn-toc" title="目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+    <div id="qr-gen-view" class="${S.mode !== 'generate' ? 'hidden' : ''}">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="space-y-6">
+          <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">输入文本或链接</label><textarea id="qr-input" class="textarea" placeholder="输入网址、文本或名片信息...">${S.text}</textarea></div>
+          <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">添加中心 Logo (可选)</label><drop-zone id="qr-logo-drop" text="点击上传 Logo" hint="建议透明背景 PNG" accept="image/*" compact></drop-zone></div>
+          <div class="flex gap-3"><button class="btn btn-primary flex-1" id="qr-dl-png">下载 PNG</button><button class="btn btn-ghost flex-1" id="qr-dl-svg">下载 SVG</button><button class="btn btn-ghost" id="qr-copy-img" title="复制图片">复制</button></div>
+        </div>
+        <div><div class="qr-preview" id="qr-preview-box"><span id="qr-placeholder" class="text-[--muted]">输入内容后生成二维码</span></div></div>
       </div>
     </div>
-  </header>
-  <main id="content-wrapper"></main>
-</div>
+    <div id="qr-parse-view" class="${S.mode !== 'parse' ? 'hidden' : ''}">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div><drop-zone id="qr-parse-drop" text="上传二维码图片" hint="支持 JPG, PNG" accept="image/*"></drop-zone></div>
+        <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">识别结果</label><div class="result-container"><div id="qr-parse-output" class="result-box text-base font-sans font-normal text-[--ink]">${S.parseResult || '等待上传图片...'}</div><button class="btn btn-sm btn-primary copy-result-btn" id="qr-parse-copy">复制结果</button></div></div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-8 justify-center"><button class="btn btn-ghost" id="reset-qr">重置工具</button></div>
+    ${$infoCard('使用说明', ['生成：支持任意文本、网址，添加 Logo 自动启用高容错率', '解析：上传二维码图片，自动识别内容并支持一键复制', '所有操作均在本地浏览器完成，保护隐私'])}
+  </main>`;
+  if (S.mode === 'generate') doGenerateQR();
+}
 
-<div class="overlay" id="overlay"></div>
-<aside id="drawer-toc"><div class="header">目录</div><div class="list" id="toc-list"></div></aside>
-<div id="drawer-settings">
-  <div class="setting-row"><span class="setting-label">字号</span><div class="setting-btns"><button id="font-dec">A-</button><span id="font-val" style="min-width: 30px; text-align: center; font-weight: 600;">18</span><button id="font-inc">A+</button></div></div>
-  <div class="setting-row"><span class="setting-label">行距</span><div class="setting-btns"><button data-line="1.6">紧凑</button><button data-line="1.9" class="active">适中</button><button data-line="2.2">宽松</button></div></div>
-  <div class="setting-row"><span class="setting-label">主题</span><div class="theme-dots"><div class="theme-dot" data-t="white" title="极简白"></div><div class="theme-dot" data-t="green" title="护眼绿"></div><div class="theme-dot" data-t="default" title="暖灰纸"></div><div class="theme-dot" data-t="sepia" title="羊皮纸"></div><div class="theme-dot" data-t="dark" title="深邃夜"></div></div></div>
-</div>
+// Tool 03: PDF拆分与合并 - 修复选项区域溢出
+function renderPdfTool() {
+  const S = pdfStore.get(), split = S.split;
+  app.innerHTML = `${$header('PDF拆分与合并', 'Tool 03')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter"><div class="flex gap-4 mb-8 justify-center"><button class="btn ${S.mode === 'split' ? 'btn-primary' : 'btn-ghost'}" data-pdf-mode="split">拆分 PDF</button><button class="btn ${S.mode === 'merge' ? 'btn-primary' : 'btn-ghost'}" data-pdf-mode="merge">合并 PDF</button></div><div id="split-view" class="${S.mode !== 'split' ? 'hidden' : ''}"><drop-zone id="split-drop" text="上传 PDF 文件" hint="支持 .pdf 格式，单个文件最大 50MB" accept=".pdf"></drop-zone><div id="split-preview" class="${split.file ? '' : 'hidden'} mt-6 p-4 bg-white rounded-xl border border-[--border] flex items-center justify-between"><div><div class="font-medium text-[--ink]" id="split-fname">${split.fileName}</div><div class="text-xs text-[--muted]">共 <span id="split-pcount">${split.pageCount}</span> 页</div></div><button class="btn btn-ghost btn-sm" id="split-remove">移除文件</button></div><div id="split-opts" class="${split.file ? '' : 'hidden'} mt-6 space-y-4"><div class="split-opts-container flex gap-4 items-center flex-wrap"><label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="split-method" value="pages" ${split.method === 'pages' ? 'checked' : ''}> 按固定页数</label><input type="number" class="input w-24" id="split-pages" value="${split.pages}" min="1"></div><div class="split-opts-container flex items-center gap-4 flex-wrap"><label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="split-method" value="range" ${split.method === 'range' ? 'checked' : ''}> 按页码范围</label><span>从</span><input type="number" class="input w-20" id="split-start" value="${split.start}" min="1"><span>到</span><input type="number" class="input w-20" id="split-end" value="${split.end}" min="1"></div></div><div class="mt-8 text-center"><button class="btn btn-primary px-10" id="split-btn">开始拆分</button></div></div><div id="merge-view" class="${S.mode !== 'merge' ? 'hidden' : ''}"><drop-zone id="merge-drop" text="上传多个 PDF 文件" hint="支持 .pdf 格式，最多20个或总计200MB" accept=".pdf" multiple></drop-zone><div id="merge-list" class="hidden mt-6 space-y-3"></div><div class="mt-8 flex gap-4 justify-center"><button class="btn btn-primary px-10" id="merge-btn" ${S.merge.files.length < 2 ? 'disabled' : ''}>开始合并</button><button class="btn btn-ghost" id="reset-pdf">重置</button></div></div>${$infoCard('使用说明', ['所有PDF处理均在本地完成', '支持按固定页数或自定义页码范围拆分', '支持将多个PDF合并为一个文档'])}</main>`;
+  if (S.mode === 'merge') renderMergeList();
+}
 
-<script>
-const API = {
-    async listBooks() { return (await fetch('/api/books')).json(); },
-    async getBookMeta(id) { return (await fetch(`/api/books/${encodeURIComponent(id)}`)).json(); },
-    async getBookContent(id) { return (await fetch(`/api/books/${encodeURIComponent(id)}/content`)).text(); },
-    async createBook(d) { return (await fetch('/api/books', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) })).json(); },
-    async updateProgress(id, d) { return (await fetch(`/api/books/${encodeURIComponent(id)}/progress`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d), keepalive: true })).json(); },
-    async deleteBook(id) { return (await fetch(`/api/books/${encodeURIComponent(id)}`, { method:'DELETE' })).json(); },
-    // v1.1 新增：置顶 API
-    async pinBook(id) { return (await fetch(`/api/books/${encodeURIComponent(id)}/pin`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:'{}' })).json(); }
-};
+// Tool 04: 日期计算器
+function renderDateTool() {
+  const S = dateStore.get();
+  const today = new Date().toISOString().split('T')[0];
+  app.innerHTML = `${$header('日期计算器', 'Tool 04')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
+    <div class="flex gap-4 mb-8 justify-center">
+      <button class="btn ${S.mode==='diff'?'btn-primary':'btn-ghost'}" data-date-mode="diff">计算日期差 (间隔)</button>
+      <button class="btn ${S.mode==='calc'?'btn-primary':'btn-ghost'}" data-date-mode="calc">推算日期 (加减)</button>
+    </div>
+    
+    <div id="date-diff-view" class="${S.mode!=='diff'?'hidden':''}">
+      <div class="bg-white p-8 rounded-2xl border border-[--border] space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">开始日期</label><input type="date" id="date-start" class="input" value="${S.startDate || today}"></div>
+          <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">结束日期</label><input type="date" id="date-end" class="input" value="${S.endDate || today}"></div>
+        </div>
+        <button class="btn btn-primary w-full" id="date-calc-diff-btn">计算间隔</button>
+        <div id="date-diff-result" class="hidden mt-6"></div>
+      </div>
+    </div>
 
-const LocalCache = {
-    db: null,
-    async init() {
-        if (this.db) return;
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('ReaderCache', 2);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains('books')) db.createObjectStore('books', { keyPath: 'id' });
-            };
-            request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
-            request.onerror = (e) => reject(e);
-        });
-    },
-    async get(id) {
-        if(!this.db) await this.init();
-        return new Promise((resolve) => {
-            const tx = this.db.transaction('books', 'readonly');
-            const req = tx.objectStore('books').get(id);
-            req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null);
-        });
-    },
-    async set(id, data) {
-        if(!this.db) await this.init();
-        return new Promise((resolve) => {
-            const tx = this.db.transaction('books', 'readwrite');
-            tx.objectStore('books').put({ id, ...data, timestamp: Date.now() });
-            tx.oncomplete = () => resolve();
-        });
-    },
-    async updateProgress(id, progressGidx) {
-        const data = await this.get(id);
-        if (data) { data.lastProgressGidx = progressGidx; await this.set(id, data); }
-    },
-    async delete(id) {
-        if(!this.db) await this.init();
-        return new Promise((resolve) => {
-            const tx = this.db.transaction('books', 'readwrite');
-            tx.objectStore('books').delete(id); tx.oncomplete = () => resolve();
-        });
-    },
-    async clearAll() {
-        if(!this.db) await this.init();
-        return new Promise((resolve) => {
-            const tx = this.db.transaction('books', 'readwrite');
-            tx.objectStore('books').clear(); tx.oncomplete = () => resolve();
-        });
-    }
-};
+    <div id="date-calc-view" class="${S.mode!=='calc'?'hidden':''}">
+      <div class="bg-white p-8 rounded-2xl border border-[--border] space-y-6">
+        <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">基准日期</label><input type="date" id="date-base" class="input" value="${S.baseDate || today}"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-[--ink-soft] mb-2">增加/减少</label>
+            <input type="number" id="date-offset" class="input" value="${S.offset}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-[--ink-soft] mb-2">时间单位</label>
+            <select id="date-unit" class="input">
+              <option value="days" ${S.unit==='days'?'selected':''}>天</option>
+              <option value="weeks" ${S.unit==='weeks'?'selected':''}>周</option>
+              <option value="months" ${S.unit==='months'?'selected':''}>月</option>
+              <option value="years" ${S.unit==='years'?'selected':''}>年</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary w-full" id="date-calc-offset-btn">推算日期</button>
+        <div id="date-calc-result" class="hidden mt-6"></div>
+      </div>
+    </div>
 
-const DataManager = {
-    bookId: null, chMap: [], totalParagraphs: 0, _localParagraphs: [],
-    async init(bookId, forceRefresh = false) {
-        this.bookId = bookId;
-        const cached = await LocalCache.get(bookId);
-        const isRecentCache = cached && cached.timestamp && (Date.now() - cached.timestamp < 5 * 60 * 1000);
+    <div class="flex gap-3 mt-8 justify-center"><button class="btn btn-ghost" id="reset-date">重置工具</button></div>
+    ${$infoCard('办公场景', ['HR：计算员工入职天数、年假剩余、合同到期日', '法务/行政：计算租房到期日、执照有效期', '财务：计算账期、利息天数、发票到期日', '注意：月份加减已自动处理"月末溢出"问题（如1月31日加1个月为2月28日）'])}
+  </main>`;
+  
+  if (S.result && S.mode === 'diff') renderDateDiffResult(S.result);
+  if (S.result && S.mode === 'calc') renderDateCalcResult(S.result);
+}
 
-        if (!forceRefresh && cached && cached.paragraphs && cached.paragraphs.length > 0) {
-            this._localParagraphs = cached.paragraphs; this.chMap = cached.chMap; this.totalParagraphs = cached.paragraphs.length;
-            
-            let networkMeta = null;
-            try { networkMeta = await API.getBookMeta(bookId); } 
-            catch (e) { return { name: cached.name, progress_gidx: cached.lastProgressGidx || 0 }; }
-            
-            const finalProgressGidx = isRecentCache ? (cached.lastProgressGidx || 0) : (networkMeta.progress_gidx || 0);
-            return {
-                name: networkMeta.name || cached.name,
-                progress_gidx: finalProgressGidx
-            };
-        }
-        const [meta, text] = await Promise.all([API.getBookMeta(bookId), API.getBookContent(bookId)]);
-        const parsed = await parseTextAsync(text, meta.name);
-        this._localParagraphs = parsed.paragraphs; this.chMap = parsed.chMap; this.totalParagraphs = parsed.paragraphs.length;
-        await LocalCache.set(bookId, { paragraphs: parsed.paragraphs, chMap: parsed.chMap, name: meta.name, lastProgressGidx: meta.progress_gidx || 0, timestamp: Date.now() });
-        return meta;
-    },
-    getChapterByGlobalIdx(gIdx) {
-        let l = 0, r = this.chMap.length - 1;
-        while (l <= r) { let mid = (l + r) >> 1; if (this.chMap[mid].globalIdx <= gIdx) l = mid + 1; else r = mid - 1; }
-        return this.chMap[r] || this.chMap[0];
-    },
-    destroy() { this._localParagraphs = []; this.chMap = []; this.totalParagraphs = 0; }
-};
+// Tool 05: 数字转中文大写
+function renderNumberTool() {
+  app.innerHTML = `${$header('数字转中文大写', 'Tool 05')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
+    <div class="bg-white p-8 rounded-2xl border border-[--border]">
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-[--ink-soft] mb-2">输入数字</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[--muted] text-xl">¥</span>
+          <input type="text" id="num-input" class="input pl-10 text-xl" placeholder="请输入金额" value="">
+        </div>
+      </div>
+      
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-[--ink-soft] mb-2">中文大写结果</label>
+        <div id="num-output" class="result-box" title="点击复制结果">
+          <span class="text-[--muted] text-base font-sans font-normal">结果将显示在这里</span>
+          <div class="copy-icon">${Icons.copy}</div>
+        </div>
+      </div>
+      
+      <div class="flex justify-center">
+        <button class="btn btn-ghost" id="reset-number">重置</button>
+      </div>
+    </div>
+    
+    ${$infoCard('使用说明', ['支持整数、小数（最多两位）、负数', '最大支持16位整数'])}
+  </main>`;
+}
 
-function parseTextAsync(text, fileName) {
-    return new Promise((resolve, reject) => {
-        const workerScript = `
-            const CHAPTER_REGEX = /^\\s*(第[零一二三四五六七八九十百千万0-9]+[章节回部集卷][^。\\n]{0,40}?)\\s*$/i;
-            self.onmessage = function(e) {
-                const { text, fileName } = e.data;
-                try {
-                    const lines = text.split(/\\r?\\n/);
-                    const paragraphs = []; const chMap = []; let currentChapterIdx = -1;
-                    for (let i = 0; i < lines.length; i++) {
-                        const trimmed = lines[i].trim(); if (!trimmed) continue;
-                        const match = trimmed.match(CHAPTER_REGEX);
-                        if (match) {
-                            currentChapterIdx++; const gIdx = paragraphs.length;
-                            chMap.push({ chapterIdx: currentChapterIdx, globalIdx: gIdx, title: match[1].trim() });
-                            paragraphs.push({ type: 'h2', text: match[1].trim(), chapterIdx: currentChapterIdx, globalIdx: gIdx });
-                        } else {
-                            if (currentChapterIdx === -1) { currentChapterIdx = 0; chMap.push({ chapterIdx: 0, globalIdx: 0, title: '前言' }); paragraphs.push({ type: 'h2', text: '前言', chapterIdx: 0, globalIdx: 0 }); }
-                            const gIdx = paragraphs.length;
-                            paragraphs.push({ type: 'p', text: trimmed, chapterIdx: currentChapterIdx, globalIdx: gIdx });
-                        }
-                    }
-                    self.postMessage({ success: true, paragraphs, chMap, bookName: fileName.replace(/\\.(txt|TXT)$/i, '') });
-                } catch (err) { self.postMessage({ success: false, error: err.message }); }
-            };`;
-        const blob = new Blob([workerScript], { type: 'application/javascript' });
-        const worker = new Worker(URL.createObjectURL(blob));
-        worker.onmessage = (e) => { worker.terminate(); if(e.data.success) resolve(e.data); else reject(new Error(e.data.error)); };
-        worker.onerror = (e) => { worker.terminate(); reject(e); };
-        worker.postMessage({ text, fileName });
+// Tool 06: 随机数据生成
+function renderMockTool() {
+  const S = mockStore.get();
+  app.innerHTML = `${$header('随机数据生成', 'Tool 06')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter">
+    <div class="flex gap-2 mb-8 justify-center flex-wrap">
+      <button class="btn ${S.type==='uuid'?'btn-primary':'btn-ghost'}" data-mock-type="uuid">UUID 序列</button>
+      <button class="btn ${S.type==='password'?'btn-primary':'btn-ghost'}" data-mock-type="password">随机密码</button>
+      <button class="btn ${S.type==='number'?'btn-primary':'btn-ghost'}" data-mock-type="number">随机数字/金额</button>
+      <button class="btn ${S.type==='picker'?'btn-primary':'btn-ghost'}" data-mock-type="picker">幸运抽签/抽取</button>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="bg-white p-6 rounded-2xl border border-[--border]">
+        <h3 class="text-lg font-semibold mb-4 text-[--ink]">生成设置</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-[--ink-soft] mb-2">生成数量</label>
+            <input type="number" id="mock-count" class="input" value="${S.count}" min="1" max="1000">
+          </div>
+          <div id="mock-opts-pwd" class="${S.type!=='password'?'hidden':''} space-y-3">
+            <label class="block text-sm font-medium text-[--ink-soft]">密码长度: ${S.pwdLen}</label>
+            <input type="range" class="range-slider" id="mock-pwd-len" min="4" max="32" value="${S.pwdLen}">
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-upper" ${S.pwdOpts.upper?'checked':''}> 大写字母</label>
+              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-lower" ${S.pwdOpts.lower?'checked':''}> 小写字母</label>
+              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-num" ${S.pwdOpts.num?'checked':''}> 数字</label>
+              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-sym" ${S.pwdOpts.sym?'checked':''}> 特殊符号</label>
+            </div>
+          </div>
+          <div id="mock-opts-num" class="${S.type!=='number'?'hidden':''} grid grid-cols-3 gap-3">
+            <div><label class="text-xs text-[--muted]">最小值</label><input type="number" id="mock-num-min" class="input" value="${S.numMin}"></div>
+            <div><label class="text-xs text-[--muted]">最大值</label><input type="number" id="mock-num-max" class="input" value="${S.numMax}"></div>
+            <div><label class="text-xs text-[--muted]">小数位数</label><input type="number" id="mock-num-dec" class="input" value="${S.numDec}" min="0" max="6"></div>
+          </div>
+          <div id="mock-opts-picker" class="${S.type!=='picker'?'hidden':''}">
+            <label class="block text-sm font-medium text-[--ink-soft] mb-2">候选名单 (每行一个)</label>
+            <textarea id="mock-list" class="textarea" placeholder="张三&#10;李四&#10;王五">${S.listText}</textarea>
+          </div>
+          <button class="btn btn-primary w-full mt-4" id="mock-gen-btn">立即生成</button>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-[--border] flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-[--ink]">生成结果</h3>
+          <div class="flex gap-2">
+            <button class="btn btn-sm btn-ghost" id="mock-copy-btn">复制全部</button>
+            <button class="btn btn-sm btn-ghost" id="mock-clear-btn">清空</button>
+          </div>
+        </div>
+        <div id="mock-result" class="mock-result flex-1">${S.result || '点击"立即生成"查看结果...'}</div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-8 justify-center"><button class="btn btn-ghost" id="reset-mock">重置工具</button></div>
+    ${$infoCard('使用场景', ['UUID：生成系统测试用的唯一订单号、用户ID', '密码：生成高强度的随机初始密码', '数字：生成财务/销售测试用的随机金额', '抽签：从名单中随机抽取幸运儿或分配任务'])}
+  </main>`;
+}
+
+// Tool 07: 图片压缩
+function renderCompressTool() {
+  const S = compressStore.get();
+  app.innerHTML = `${$header('图片压缩', 'Tool 07')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter"><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div><drop-zone id="comp-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP" accept="image/*"></drop-zone><div id="comp-ctrl" class="hidden mt-6 space-y-6"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">选择格式 (智能预估)</label><div class="grid grid-cols-3 gap-3" id="format-cards"></div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">质量: <span id="comp-q-val">${Math.round(S.quality * 100)}</span>%</label><input type="range" class="range-slider" id="comp-q" min="10" max="100" value="${S.quality * 100}"></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">缩放比例: <span id="comp-s-val">${S.scale}</span>%</label><input type="range" class="range-slider" id="comp-s" min="10" max="100" value="${S.scale}"></div></div></div><div><div class="grid grid-cols-2 gap-4 mb-6"><div class="stat-box"><div class="val" id="comp-orig-size">-</div><div class="lbl">原始大小</div></div><div class="stat-box"><div class="val text-[--accent]" id="comp-new-size">-</div><div class="lbl">压缩后大小</div></div></div><div class="bg-white rounded-xl border border-[--border] p-4 flex items-center justify-center min-h-[300px]"><img id="comp-preview" class="max-w-full max-h-[400px] rounded-lg hidden" alt="preview"><span id="comp-placeholder" class="text-[--muted]">上传图片后预览</span></div><div class="flex gap-3 mt-6"><button class="btn btn-primary flex-1" id="comp-dl-btn" disabled>下载压缩图片</button><button class="btn btn-ghost" id="reset-compress">重置</button></div></div></div>${$infoCard('使用说明', ['所有压缩处理均在本地浏览器完成，不上传服务器', '上传图片后会自动计算各格式预估大小', '点击格式卡片即可切换，WebP 通常体积最小'])}</main>`;
+  renderFormatCards();
+}
+
+// Tool 08: 图片转 PDF - 优化Sortable初始化
+function renderImageTool() {
+  const S = imageStore.get();
+  app.innerHTML = `${$header('图片转 PDF', 'Tool 08')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter"><drop-zone id="img-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP, HEIC" accept="image/*,.heic,.heif" multiple></drop-zone><div id="img-section" class="hidden mt-8"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-semibold text-[--ink]">已选图片 <span id="img-count" class="text-[--muted] font-normal text-sm"></span></h3><button class="btn btn-ghost btn-sm" id="reset-image">重置</button></div><div id="img-list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4"></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面模式</label><div class="flex gap-3 flex-wrap">${$optGroup('mode', S.mode)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面方向</label><div class="flex gap-3 flex-wrap">${$optGroup('orient', S.orient)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">压缩等级</label><div class="flex gap-3 flex-wrap">${$optGroup('quality', S.quality)}</div></div></div><div class="mt-10 text-center"><button class="btn btn-primary text-lg px-12 py-4" id="convert-img-btn">生成并下载 PDF</button></div>${$infoCard('使用说明', ['所有图片处理均在本地完成', 'HEIC/HEIF 格式将自动转换为 JPEG', '拖拽排序：长按缩略图拖动调整顺序'])}</main>`;
+  // 优化：在显示section后再初始化Sortable
+  syncImageListDOM();
+  const list = app.querySelector('#img-list');
+  if (sortableInst) sortableInst.destroy();
+  if (list) {
+    sortableInst = Sortable.create(list, { 
+      animation: 150, 
+      ghostClass: 'dragging', 
+      onEnd: e => { 
+        const files = imageStore.get().files; 
+        const movedItem = files.splice(e.oldIndex, 1)[0]; 
+        files.splice(e.newIndex, 0, movedItem); 
+        imageStore.set(s => ({ ...s, files })); 
+      } 
     });
+  }
 }
 
-const contentWrapper = document.getElementById('content-wrapper');
-const readerEl = document.getElementById('reader');
-const BUFFER_SIZE = 40; 
-let windowStart = 0, windowEnd = 0;
-let currentGlobalIdx = 0, currentChapterIdx = 0, currentBookId = null;
-let obsTop, obsBot;
-
-function createNode(para, gIdx) {
-    const el = document.createElement(para.type === 'h2' ? 'h2' : 'p');
-    el.className = para.type === 'h2' ? 'chapter-title' : '';
-    el.textContent = para.text; el.dataset.gidx = gIdx; el.dataset.cidx = para.chapterIdx;
-    return el;
+function renderMergeList() {
+  const el = app.querySelector('#merge-list'); if (!el) return;
+  const files = pdfStore.get().merge.files; if (!files.length) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = files.map((f, i) => `<div class="flex items-center justify-between p-3 bg-white rounded-lg border border-[--border]"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-[--bg-2] rounded flex items-center justify-center text-[--muted] text-xs font-bold">PDF</div><div><div class="font-medium text-[--ink] text-sm">${f.name}</div><div class="text-xs text-[--muted]">${(f.size / 1048576).toFixed(2)} MB</div></div></div><button class="btn btn-ghost btn-sm" data-rm-pdf="${i}">移除</button></div>`).join('');
+  const mergeBtn = app.querySelector('#merge-btn');
+  if (mergeBtn) files.length < 2 ? mergeBtn.setAttribute('disabled', '') : mergeBtn.removeAttribute('disabled');
 }
 
-function setupVirtualScroll() {
-    if (obsTop) obsTop.disconnect(); if (obsBot) obsBot.disconnect();
-    let sTop = document.getElementById('sentinel-top'); let sBot = document.getElementById('sentinel-bottom');
-    if (!sTop) { sTop = document.createElement('div'); sTop.id = 'sentinel-top'; sTop.style.height = '1px'; contentWrapper.prepend(sTop); }
-    if (!sBot) { sBot = document.createElement('div'); sBot.id = 'sentinel-bottom'; sBot.style.height = '1px'; contentWrapper.appendChild(sBot); }
-    obsBot = new IntersectionObserver((entries) => { if (entries[0].isIntersecting && windowEnd < DataManager.totalParagraphs - 1) loadMore('bottom'); }, { root: readerEl, rootMargin: '150%' });
-    obsBot.observe(sBot);
-    obsTop = new IntersectionObserver((entries) => { if (entries[0].isIntersecting && windowStart > 0) loadMore('top'); }, { root: readerEl, rootMargin: '150%' });
-    obsTop.observe(sTop);
+function renderFormatCards() {
+  const S = compressStore.get();
+  const container = app.querySelector('#format-cards');
+  if (!container) return;
+  const formats = ['jpeg', 'webp', 'png'];
+  container.innerHTML = formats.map(f => {
+    const size = S.estimates[f];
+    const isActive = S.format === f;
+    return `<div class="format-card p-4 border border-[--border] rounded-xl text-center ${isActive ? 'active' : ''}" data-cfmt="${f}"><div class="font-bold text-[--ink] uppercase">${f}</div><div class="text-sm text-[--muted] mt-1">${size ? Utils.formatSize(size) : '计算中...'}</div></div>`;
+  }).join('');
 }
 
-function loadMore(direction) {
-    if (direction === 'bottom') {
-        const newEnd = Math.min(DataManager.totalParagraphs - 1, windowEnd + BUFFER_SIZE);
-        if (newEnd === windowEnd) return;
-        const f = document.createDocumentFragment();
-        DataManager._localParagraphs.slice(windowEnd + 1, newEnd + 1).forEach((p, i) => f.appendChild(createNode(p, windowEnd + 1 + i)));
-        contentWrapper.insertBefore(f, document.getElementById('sentinel-bottom')); windowEnd = newEnd;
-    } else if (direction === 'top') {
-        const newStart = Math.max(0, windowStart - BUFFER_SIZE);
-        if (newStart === windowStart) return;
-        const f = document.createDocumentFragment();
-        DataManager._localParagraphs.slice(newStart, windowStart).forEach((p, i) => f.appendChild(createNode(p, newStart + i)));
-        const sTop = document.getElementById('sentinel-top');
-        const oldScrollHeight = contentWrapper.scrollHeight;
-        contentWrapper.insertBefore(f, sTop.nextSibling); 
-        windowStart = newStart;
-        readerEl.scrollTop += (contentWrapper.scrollHeight - oldScrollHeight);
+function syncImageListDOM() {
+  const files = imageStore.get().files;
+  const list = app.querySelector('#img-list');
+  const sec = app.querySelector('#img-section');
+  if (!list || !sec) return;
+  if (!files.length) { sec.classList.add('hidden'); list.innerHTML = ''; return; }
+  sec.classList.remove('hidden');
+  app.querySelector('#img-count').textContent = `(${files.length} 张)`;
+  list.innerHTML = files.map((f, i) => `<div class="thumb" data-idx="${i}"><img src="${f.url}" alt="${f.name}"><span class="thumb-num">${i + 1}</span><span class="thumb-orient">${f.w > f.h ? '横' : '竖'}</span><button class="thumb-remove" data-rm-img="${i}"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>`).join('');
+}
+
+function renderDateDiffResult(res) {
+  const el = app.querySelector('#date-diff-result');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="date-result-card">
+      <div class="big-num">${res.totalDays}</div>
+      <div class="big-lbl">总计相差天数</div>
+      <div class="grid grid-cols-2 gap-4 mt-6 text-left">
+        <div class="stat-box"><div class="val">${res.workDays}</div><div class="lbl">实际工作日</div></div>
+        <div class="stat-box"><div class="val">${res.weekendDays}</div><div class="lbl">周末天数</div></div>
+      </div>
+      <div class="mt-4 text-sm text-[--ink-soft]">相当于 ${res.years} 年 ${res.months} 个月 ${res.days} 天</div>
+    </div>
+  `;
+}
+
+function renderDateCalcResult(res) {
+  const el = app.querySelector('#date-calc-result');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="date-result-card">
+      <div class="text-sm text-[--muted] mb-2">推算结果日期</div>
+      <div class="big-num" style="font-size:32px">${res.dateStr}</div>
+      <div class="mt-4 text-sm text-[--ink-soft]">
+        ${res.offset > 0 ? '增加' : '减少'} ${Math.abs(res.offset)} ${res.unitName}
+        ${res.isWorkday ? '' : '<span class="text-[--accent] ml-2">(注意：该日为周末)</span>'}
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// 7. 业务逻辑 - 添加图片加载错误处理
+// ═══════════════════════════════════════════
+function doConvert() {
+  const input = app.querySelector('#num-input'), output = app.querySelector('#num-output'); if (!input || !output) return;
+  let val = input.value.replace(/[^\d.-]/g, '').replace(/-/g, (m, o) => o === 0 ? '-' : '').replace(/\./g, (m, o, s) => s.indexOf('.') === o ? '.' : '');
+  if (val !== input.value) input.value = val;
+  if (!val || val === '-' || val === '.') { 
+    output.innerHTML = '<span class="text-[--muted] text-base font-sans font-normal">结果将显示在这里</span><div class="copy-icon" style="display:none">' + Icons.copy + '</div>'; 
+    return; 
+  }
+  const res = Utils.numberToChinese(val);
+  if (res === '数字超出支持范围') {
+    output.innerHTML = '<span class="text-[--accent] text-base font-sans font-normal">数字超出支持范围（最大16位整数）</span><div class="copy-icon" style="display:none">' + Icons.copy + '</div>';
+  } else {
+    output.innerHTML = `<span>${res}</span><div class="copy-icon">${Icons.copy}</div>`;
+  }
+}
+
+async function handleImageFiles(fileList) {
+  const valid = Array.from(fileList).filter(f => f.type.startsWith('image/') || f.name.match(/\.(jpg|jpeg|png|webp|bmp|heic|heif)$/i)); if (!valid.length) return;
+  const results = await Promise.all(valid.map(async file => {
+    try {
+      let blob = file; if (Utils.isHeic(file)) { const res = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }); blob = Array.isArray(res) ? res[0] : res; }
+      const url = URL.createObjectURL(blob);
+      const { w, h } = await new Promise((res, rej) => { 
+        const img = new Image(); 
+        img.onload = () => res({ w: img.width, h: img.height }); 
+        img.onerror = () => rej(new Error('图片加载失败')); 
+        img.src = url; 
+      });
+      return { url, blob, w, h, name: file.name };
+    } catch { Utils.showToast('处理失败: ' + file.name, true); return null; }
+  }));
+  imageStore.set(s => ({ ...s, files: [...s.files, ...results.filter(Boolean)] }));
+  syncImageListDOM();
+}
+
+async function convertToPdf() {
+  const files = imageStore.get().files; if (!files.length) return Utils.showToast('请先选择图片', true);
+  const btn = app.querySelector('#convert-img-btn'); btn.setAttribute('disabled', ''); btn.innerHTML = '<div class="spinner"></div> 正在生成...';
+  try {
+    const { jsPDF } = window.jspdf; let pdf = null;
+    for (const f of files) {
+      // 添加错误处理
+      const img = new Image(); img.src = f.url; 
+      await new Promise((r, rej) => { 
+        img.onload = r; 
+        img.onerror = () => rej(new Error('图片加载失败')); 
+      });
+      const c = document.createElement('canvas'); c.width = f.w; c.height = f.h;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, f.w, f.h); ctx.drawImage(img, 0, 0, f.w, f.h);
+      const S = imageStore.get();
+      if (S.mode === 'fit') {
+        const o = f.w >= f.h ? 'landscape' : 'portrait'; if (!pdf) pdf = new jsPDF({ unit: 'pt', format: [f.w, f.h], orientation: o }); else pdf.addPage([f.w, f.h], o);
+        pdf.addImage(c, 'JPEG', 0, 0, f.w, f.h, undefined, 'FAST');
+      } else {
+        const o = S.orient === 'auto' ? (f.w > f.h ? 'landscape' : 'portrait') : S.orient; if (!pdf) pdf = new jsPDF({ orientation: o, unit: 'mm', format: 'a4' }); else pdf.addPage('a4', o);
+        const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), r = Math.min((pw - 20) / f.w, (ph - 20) / f.h);
+        pdf.addImage(c, 'JPEG', (pw - f.w * r) / 2, (ph - f.h * r) / 2, f.w * r, f.h * r, undefined, 'FAST');
+      }
     }
-    cleanUpDOM();
+    pdf.save(`images_${new Date().toISOString().slice(0, 10)}.pdf`); Utils.showToast('PDF 已生成并下载');
+  } catch (e) { Utils.showToast('生成失败: ' + e.message, true); } finally { btn.removeAttribute('disabled'); btn.innerHTML = '生成并下载 PDF'; }
 }
 
-function cleanUpDOM() {
-    let sTop = document.getElementById('sentinel-top');
-    let node = sTop ? sTop.nextSibling : contentWrapper.firstChild;
-    while (node && node.id !== 'sentinel-bottom') {
-        if (parseInt(node.dataset.gidx) < windowStart) {
-            let next = node.nextSibling;
-            contentWrapper.removeChild(node);
-            node = next;
-        } else {
-            break;
-        }
-    }
-    let sBot = document.getElementById('sentinel-bottom');
-    node = sBot ? sBot.previousSibling : contentWrapper.lastChild;
-    while (node && node.id !== 'sentinel-top') {
-        if (parseInt(node.dataset.gidx) > windowEnd) {
-            let prev = node.previousSibling;
-            contentWrapper.removeChild(node);
-            node = prev;
-        } else {
-            break;
-        }
-    }
-}
-
-function teleportTo(centerIdx) {
-    const newStart = Math.max(0, centerIdx - BUFFER_SIZE); 
-    const newEnd = Math.min(DataManager.totalParagraphs - 1, centerIdx + BUFFER_SIZE);
-    
-    contentWrapper.innerHTML = '';
-    const sTop = document.createElement('div'); sTop.id = 'sentinel-top'; sTop.style.height = '1px'; contentWrapper.appendChild(sTop);
-    
-    const f = document.createDocumentFragment();
-    DataManager._localParagraphs.slice(newStart, newEnd + 1).forEach((p, i) => f.appendChild(createNode(p, newStart + i)));
-    contentWrapper.appendChild(f);
-    
-    const sBot = document.createElement('div'); sBot.id = 'sentinel-bottom'; sBot.style.height = '1px'; contentWrapper.appendChild(sBot);
-    
-    windowStart = newStart; windowEnd = newEnd; 
-    setupVirtualScroll();
-    
-    setTimeout(() => {
-        const targetNode = contentWrapper.querySelector(`[data-gidx="${centerIdx}"]`);
-        if (targetNode) {
-            void targetNode.offsetHeight; 
-            targetNode.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }, 50);
-}
-
-function calculateCurrentProgress() {
-    const scrollTop = readerEl.scrollTop; 
-    const domNodes = contentWrapper.children; 
-    let topGidx = windowStart;
-    for (let i = 0; i < domNodes.length; i++) { 
-        if (domNodes[i].offsetTop <= scrollTop + 100) topGidx = parseInt(domNodes[i].dataset.gidx); 
-        else break; 
-    }
-    return topGidx;
-}
-
-let scrollTimer;
-readerEl.addEventListener('scroll', () => {
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(() => {
-        const topGidx = calculateCurrentProgress();
-        const currentChapter = DataManager.getChapterByGlobalIdx(topGidx);
-        
-        if (currentChapter.chapterIdx !== currentChapterIdx) { 
-            currentChapterIdx = currentChapter.chapterIdx; 
-            updateHeader(currentChapterIdx); 
-        }
-        currentGlobalIdx = topGidx;
-        saveProgress();
-    }, 60);
-}, { passive: true });
-
-function updateHeader(cIdx) {
-    const ch = DataManager.chMap.find(c => c.chapterIdx === cIdx);
-    document.getElementById('header-title').textContent = ch ? ch.title : '阅读中';
-    document.querySelectorAll('#toc-list .item').forEach((el, i) => el.classList.toggle('active', i === cIdx));
-}
-
-async function jumpToChapter(cIdx) {
-    const ch = DataManager.chMap.find(c => c.chapterIdx === cIdx); 
-    if (!ch) return;
-    
-    closeDrawers(); 
-    document.body.classList.remove('ui-visible');
-    
-    teleportTo(ch.globalIdx);
-}
-
-let touchStartX = 0, touchStartY = 0, isSwiping = false, lastTouchTime = 0;
-contentWrapper.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; isSwiping = false; }, { passive: true });
-contentWrapper.addEventListener('touchmove', e => { if (Math.abs(e.touches[0].clientX - touchStartX) > 15 || Math.abs(e.touches[0].clientY - touchStartY) > 15) isSwiping = true; }, { passive: true });
-contentWrapper.addEventListener('touchend', e => { lastTouchTime = Date.now(); if (isSwiping || window.getSelection().toString().length > 0) return; toggleUI(); });
-contentWrapper.addEventListener('click', e => {
-    if (Date.now() - lastTouchTime < 500 || isSwiping || window.getSelection().toString().length > 0) return;
-    if (e.target.closest('button, a, input, #drawer-settings')) return;
-    toggleUI();
-});
-
-document.addEventListener('keydown', e => {
-    if (document.getElementById('reader').classList.contains('hidden')) return;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    switch(e.key) {
-        case 'ArrowLeft': jumpToChapter(currentChapterIdx - 1); break;
-        case 'ArrowRight': jumpToChapter(currentChapterIdx + 1); break;
-        case 'ArrowUp': readerEl.scrollBy({ top: -readerEl.clientHeight * 0.8, behavior: 'smooth' }); break;
-        case 'ArrowDown': readerEl.scrollBy({ top: readerEl.clientHeight * 0.8, behavior: 'smooth' }); break;
-        case 'Escape': closeDrawers(); document.body.classList.remove('ui-visible'); break;
-    }
-});
-
-function toggleUI() { document.body.classList.toggle('ui-visible'); }
-function openDrawer(id) {
-    document.getElementById('overlay').classList.add('active'); document.getElementById(id).classList.add('active');
-    if (id === 'drawer-toc') setTimeout(() => { const a = document.querySelector('#toc-list .item.active'); if (a) a.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 200);
-}
-function closeDrawers() { document.getElementById('overlay').classList.remove('active'); document.querySelectorAll('[id^="drawer-"]').forEach(el => el.classList.remove('active')); }
-document.getElementById('overlay').onclick = closeDrawers;
-document.getElementById('btn-back').onclick = () => { saveProgress(true); DataManager.destroy(); document.getElementById('reader').classList.add('hidden'); document.getElementById('bookshelf').classList.remove('hidden'); renderBookList(); };
-document.getElementById('btn-toc').onclick = () => openDrawer('drawer-toc');
-document.getElementById('btn-settings').onclick = () => openDrawer('drawer-settings');
-
-function updateNightModeIcon() {
-    const btn = document.getElementById('btn-night-mode');
-    btn.innerHTML = settings.theme === 'dark' 
-        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
-        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-}
-
-let settings = JSON.parse(localStorage.getItem('reader_settings_v13') || '{"fontSize":18,"lineHeight":1.9,"theme":"default","previousTheme":"default"}');
-function applySettings() {
-    document.body.dataset.theme = settings.theme;
-    contentWrapper.style.fontSize = settings.fontSize + 'px'; contentWrapper.style.lineHeight = settings.lineHeight;
-    document.getElementById('font-val').textContent = settings.fontSize;
-    document.querySelectorAll('.theme-dot').forEach(el => el.classList.toggle('active', el.dataset.t === settings.theme));
-    document.querySelectorAll('[data-line]').forEach(el => el.classList.toggle('active', parseFloat(el.dataset.line) === settings.lineHeight));
-    updateNightModeIcon(); localStorage.setItem('reader_settings_v13', JSON.stringify(settings));
-}
-
-document.getElementById('btn-night-mode').onclick = () => {
-    settings.theme = settings.theme === 'dark' ? (settings.previousTheme || 'default') : 'dark';
-    if (settings.theme !== 'dark') settings.previousTheme = settings.theme; applySettings();
-};
-document.getElementById('font-dec').onclick = () => { if(settings.fontSize > 14) { settings.fontSize -= 2; applySettings(); } };
-document.getElementById('font-inc').onclick = () => { if(settings.fontSize < 28) { settings.fontSize += 2; applySettings(); } };
-document.querySelectorAll('[data-line]').forEach(btn => { btn.onclick = () => { settings.lineHeight = parseFloat(btn.dataset.line); applySettings(); }; });
-document.querySelectorAll('.theme-dot').forEach(dot => { dot.onclick = () => { settings.theme = dot.dataset.t; applySettings(); }; });
-
-let saveTimer;
-function saveProgress(force = false) {
-    clearTimeout(saveTimer);
-    
-    const doSave = () => {
-        if (currentBookId) {
-            if (force) {
-                currentGlobalIdx = calculateCurrentProgress();
-                const ch = DataManager.getChapterByGlobalIdx(currentGlobalIdx);
-                if (ch) currentChapterIdx = ch.chapterIdx;
-            }
-
-            const currentChapter = DataManager.chMap.find(c => c.chapterIdx === currentChapterIdx);
-            const chapterTitle = currentChapter ? currentChapter.title : '';
-            
-            API.updateProgress(currentBookId, { 
-                progressGidx: currentGlobalIdx,
-                currentChapterTitle: chapterTitle 
-            }).catch(()=>{});
-            
-            LocalCache.updateProgress(currentBookId, currentGlobalIdx);
-        }
-    };
-    
-    if (force) {
-        doSave(); 
+async function splitPdf() {
+  const split = pdfStore.get().split; if (!split.file) return; 
+  const { method, pages, start, end } = split;
+  const btn = app.querySelector('#split-btn'); btn.setAttribute('disabled', ''); btn.innerHTML = '<div class="spinner"></div> 处理中...';
+  try {
+    const doc = await PDFLib.PDFDocument.load(await split.file.arrayBuffer()), total = doc.getPageCount();
+    if (method === 'pages') {
+      for (let i = 0; i < total; i += pages) { const nd = await PDFLib.PDFDocument.create(); (await nd.copyPages(doc, Array.from({ length: Math.min(pages, total - i) }, (_, j) => i + j))).forEach(p => nd.addPage(p)); Utils.downloadBlob(await nd.save(), `split_${Math.floor(i / pages) + 1}.pdf`); }
     } else {
-        saveTimer = setTimeout(doSave, 500); 
+      const s = start - 1, e = end; 
+      const nd = await PDFLib.PDFDocument.create(); (await nd.copyPages(doc, Array.from({ length: e - s }, (_, j) => s + j))).forEach(p => nd.addPage(p)); Utils.downloadBlob(await nd.save(), 'split_range.pdf');
     }
-}
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveProgress(true); });
-window.addEventListener('beforeunload', () => { saveProgress(true); });
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/[&<>"'\/`]/g, function(m) {
-        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;', '`': '&#x60;'}[m];
-    });
+    Utils.showToast('拆分完成！');
+  } catch (e) { Utils.showToast('拆分失败: ' + e.message, true); } finally { btn.removeAttribute('disabled'); btn.innerHTML = '开始拆分'; }
 }
 
-const importBtn = document.getElementById('import-btn');
-const loadingMask = document.getElementById('loading-mask');
-const loadingText = document.getElementById('loading-text');
+async function mergePdf() {
+  const files = pdfStore.get().merge.files; if (files.length < 2) return Utils.showToast('请至少选择2个PDF文件', true); 
+  const btn = app.querySelector('#merge-btn'); btn.setAttribute('disabled', ''); btn.innerHTML = '<div class="spinner"></div> 处理中...';
+  try {
+    const merged = await PDFLib.PDFDocument.create();
+    for (const f of files) { const doc = await PDFLib.PDFDocument.load(await f.arrayBuffer()); (await merged.copyPages(doc, doc.getPageIndices())).forEach(p => merged.addPage(p)); }
+    Utils.downloadBlob(await merged.save(), 'merged.pdf'); Utils.showToast('合并完成！');
+  } catch (e) { Utils.showToast('合并失败: ' + e.message, true); } finally { btn.removeAttribute('disabled'); btn.innerHTML = '开始合并'; }
+}
 
-document.getElementById('clear-cache-btn').onclick = async () => {
-    if(confirm('确定清理所有书籍的本地缓存吗？\n(下次打开书籍时将重新下载并解析)')) {
-        await LocalCache.clearAll();
-        alert('缓存已清理！');
+async function calculateEstimates(file) {
+  const url = URL.createObjectURL(file); 
+  const img = new Image(); img.src = url; 
+  await new Promise((r, rej) => { 
+    img.onload = r; 
+    img.onerror = () => rej(new Error('图片加载失败')); 
+  }); 
+  URL.revokeObjectURL(url);
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const getBlobSize = (type, q) => new Promise(r => c.toBlob(b => r(b ? b.size : 0), type, q));
+  const [jpeg, webp, png] = await Promise.all([getBlobSize('image/jpeg', 0.8), getBlobSize('image/webp', 0.8), getBlobSize('image/png', 1.0)]);
+  compressStore.set(s => ({ ...s, estimates: { jpeg, webp, png } }));
+  renderFormatCards();
+}
+
+async function doCompress() {
+  const S = compressStore.get(); if (!S.file) return;
+  const taskId = ++compressTaskId;
+  const img = new Image(); img.src = S.url; 
+  await new Promise((r, rej) => { 
+    img.onload = r; 
+    img.onerror = () => rej(new Error('图片加载失败')); 
+  });
+  const w = Math.round(img.width * (S.scale / 100)), h = Math.round(img.height * (S.scale / 100));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+  const blob = await new Promise(r => c.toBlob(r, `image/${S.format}`, S.quality));
+  if (taskId !== compressTaskId) return;
+  if (S.resultUrl) URL.revokeObjectURL(S.resultUrl);
+  compressStore.set(s => ({ ...s, resultBlob: blob, resultUrl: URL.createObjectURL(blob) }));
+  const preview = app.querySelector('#comp-preview'), placeholder = app.querySelector('#comp-placeholder');
+  if (preview) { preview.src = compressStore.get().resultUrl; preview.classList.remove('hidden'); placeholder?.classList.add('hidden'); }
+  const elSize = app.querySelector('#comp-new-size'); if (elSize) elSize.textContent = Utils.formatSize(blob.size);
+  const dlBtn = app.querySelector('#comp-dl-btn'); if (dlBtn) dlBtn.removeAttribute('disabled');
+}
+
+function doTextCase() {
+  const input = app.querySelector('#tc-input'), output = app.querySelector('#tc-output'); if (!input || !output) return;
+  textStore.set(s => ({ ...s, input: input.value }));
+  output.value = Utils.convertCase(input.value, textStore.get().mode);
+  const chars = input.value.length, words = input.value.trim() ? input.value.trim().split(/\s+/).length : 0, lines = input.value ? input.value.split('\n').length : 0;
+  const cEl = app.querySelector('#tc-chars'), wEl = app.querySelector('#tc-words'), lEl = app.querySelector('#tc-lines');
+  if (cEl) cEl.textContent = chars; if (wEl) wEl.textContent = words; if (lEl) lEl.textContent = lines;
+}
+
+async function doGenerateQR() {
+  const S = qrStore.get(), box = app.querySelector('#qr-preview-box'); if (!box) return;
+  if (!S.text) { box.innerHTML = '<span id="qr-placeholder" class="text-[--muted]">输入内容后生成二维码</span>'; return; }
+  let qr;
+  try { qr = qrcode(0, S.logoUrl ? 'H' : 'M'); qr.addData(S.text, 'Byte'); qr.make(); } catch (e) { box.innerHTML = `<span class="text-[--accent]">文本过长或包含非法字符</span>`; return; }
+  const count = qr.getModuleCount(), cell = 10, size = count * cell;
+  const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#000';
+  for (let r = 0; r < count; r++) for (let c = 0; c < count; c++) if (qr.isDark(r, c)) ctx.fillRect(c * cell, r * cell, cell, cell);
+  if (S.logoUrl) {
+    const img = new Image(); img.src = S.logoUrl; 
+    await new Promise((r, rej) => { 
+      img.onload = r; 
+      img.onerror = () => rej(new Error('Logo加载失败')); 
+    }).catch(() => Utils.showToast('Logo加载失败，已忽略', true));
+    const lw = size * 0.2, lh = size * 0.2, lx = (size - lw) / 2, ly = (size - lh) / 2;
+    ctx.fillStyle = '#fff'; ctx.fillRect(lx - 8, ly - 8, lw + 16, lh + 16); ctx.drawImage(img, lx, ly, lw, lh);
+  }
+  box.innerHTML = ''; box.appendChild(canvas);
+}
+
+async function doParseQR(file) {
+  const url = URL.createObjectURL(file); 
+  const img = new Image(); img.src = url; 
+  await new Promise((r, rej) => { 
+    img.onload = r; 
+    img.onerror = () => rej(new Error('图片加载失败')); 
+  }).catch(() => { 
+    Utils.showToast('图片加载失败', true); 
+    URL.revokeObjectURL(url); 
+    return; 
+  });
+  URL.revokeObjectURL(url);
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const imageData = ctx.getImageData(0, 0, c.width, c.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height);
+  const output = app.querySelector('#qr-parse-output');
+  if (code) { qrStore.set(s => ({ ...s, parseResult: code.data })); output.textContent = code.data; Utils.showToast('识别成功'); } 
+  else { qrStore.set(s => ({ ...s, parseResult: '' })); output.innerHTML = '<span class="text-[--accent]">未识别到二维码内容</span>'; Utils.showToast('未识别到二维码', true); }
+}
+
+function doGenerateMock() {
+  const S = mockStore.get();
+  const count = Math.max(1, Math.min(1000, S.count));
+  let results = [];
+  
+  try {
+    if (S.type === 'uuid') {
+      for (let i = 0; i < count; i++) results.push(crypto.randomUUID());
+    } else if (S.type === 'password') {
+      let chars = '';
+      if (S.pwdOpts.upper) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      if (S.pwdOpts.lower) chars += 'abcdefghijklmnopqrstuvwxyz';
+      if (S.pwdOpts.num) chars += '0123456789';
+      if (S.pwdOpts.sym) chars += '!@#$%^&*()_+~`|{}[]:;?><,./-=';
+      if (!chars) return Utils.showToast('请至少选择一种字符类型', true);
+      for (let i = 0; i < count; i++) {
+        let pwd = '';
+        const arr = new Uint32Array(S.pwdLen);
+        crypto.getRandomValues(arr);
+        for (let j = 0; j < S.pwdLen; j++) pwd += chars[arr[j] % chars.length];
+        results.push(pwd);
+      }
+    } else if (S.type === 'number') {
+      const min = parseFloat(S.numMin) || 0;
+      const max = parseFloat(S.numMax) || 100;
+      const dec = Math.max(0, Math.min(6, S.numDec));
+      for (let i = 0; i < count; i++) {
+        const val = Math.random() * (max - min) + min;
+        results.push(val.toFixed(dec));
+      }
+    } else if (S.type === 'picker') {
+      const list = S.listText.split('\n').map(s => s.trim()).filter(Boolean);
+      if (!list.length) return Utils.showToast('请输入候选名单', true);
+      const pickCount = Math.min(count, list.length);
+      const shuffled = [...list].sort(() => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295 - 0.5);
+      results = shuffled.slice(0, pickCount);
     }
-};
-
-// v1.1: 重构书架渲染逻辑
-async function renderBookList() {
-    const books = await API.listBooks();
-    const list = document.getElementById('book-list');
-    if (!books || books.length === 0) { list.innerHTML = '<div class="empty-tip">书架空空如也<br>点击右上角导入你的第一本 TXT 小说</div>'; return; }
     
-    list.innerHTML = books.map(b => {
-        const currentTitle = b.current_chapter_title || '未开始';
-        const totalP = b.total_paragraphs || 1; 
-        const readP = (b.progress_gidx || 0) + 1;
-        const progressPercent = Math.min(100, Math.round((readP / totalP) * 100));
-
-        return `
-        <div class="book-item" data-id="${escapeHtml(b.id)}">
-            <button class="btn-spine" onclick="pinBook('${escapeHtml(b.id)}')" title="置顶"></button>
-            <div class="book-main" onclick="openBook('${escapeHtml(b.id)}')">
-                <div class="book-name">${escapeHtml(b.name)}</div>
-                <div class="progress-info">
-                    <span class="progress-text">${escapeHtml(currentTitle)} (${progressPercent}%)</span>
-                    <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercent}%"></div></div>
-                </div>
-            </div>
-            <div class="book-actions">
-                <button class="btn-icon-action" onclick="refreshBook('${escapeHtml(b.id)}')" title="刷新">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                </button>
-                <button class="btn-icon-action btn-delete" onclick="deleteBook('${escapeHtml(b.id)}')" title="删除">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                </button>
-            </div>
-        </div>`;
-    }).join('');
+    const resStr = results.join('\n');
+    mockStore.set(s => ({ ...s, result: resStr }));
+    const el = app.querySelector('#mock-result');
+    if (el) el.textContent = resStr;
+    Utils.showToast(`成功生成 ${results.length} 条数据`);
+  } catch (e) {
+    Utils.showToast('生成失败: ' + e.message, true);
+  }
 }
 
-// v1.1: 新增置顶功能
-window.pinBook = async function(id) {
-    try {
-        await API.pinBook(id);
-        await renderBookList(); // 刷新列表，书会跳到第一
-    } catch(e) {
-        alert('置顶失败：' + e.message);
+function doCalculateDateDiff() {
+  const startStr = app.querySelector('#date-start').value;
+  const endStr = app.querySelector('#date-end').value;
+  
+  if (!startStr || !endStr) return Utils.showToast('请选择完整的日期', true);
+  
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  start.setHours(0,0,0,0);
+  end.setHours(0,0,0,0);
+  
+  if (isNaN(start) || isNaN(end)) return Utils.showToast('日期格式无效', true);
+  
+  const totalDays = Math.abs(Math.round((end - start) / (1000 * 60 * 60 * 24)));
+  
+  let workDays = 0, weekendDays = 0;
+  const s = start <= end ? start : end;
+  const e = start <= end ? end : start;
+  let current = new Date(s);
+  
+  while (current < e) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) workDays++;
+    else weekendDays++;
+    current.setDate(current.getDate() + 1);
+  }
+  
+  const later = start <= end ? end : start;
+  const earlier = start <= end ? start : end;
+  
+  let years = later.getFullYear() - earlier.getFullYear();
+  let months = later.getMonth() - earlier.getMonth();
+  let days = later.getDate() - earlier.getDate();
+  if (days < 0) { months--; days += new Date(later.getFullYear(), later.getMonth(), 0).getDate(); }
+  if (months < 0) { years--; months += 12; }
+  
+  const res = { totalDays, workDays, weekendDays, years, months, days };
+  dateStore.set(s => ({ ...s, startDate: startStr, endDate: endStr, result: res }));
+  renderDateDiffResult(res);
+}
+
+// 修复：月份加减逻辑，正确处理月末溢出
+function doCalculateDateOffset() {
+  const baseStr = app.querySelector('#date-base').value;
+  const offset = parseInt(app.querySelector('#date-offset').value) || 0;
+  const unit = app.querySelector('#date-unit').value;
+  
+  if (!baseStr) return Utils.showToast('请选择基准日期', true);
+  
+  const base = new Date(baseStr);
+  if (isNaN(base)) return Utils.showToast('日期格式无效', true);
+  
+  const resultDate = new Date(base);
+  
+  if (unit === 'days') {
+    resultDate.setDate(resultDate.getDate() + offset);
+  } else if (unit === 'weeks') {
+    resultDate.setDate(resultDate.getDate() + (offset * 7));
+  } else if (unit === 'years') {
+    resultDate.setFullYear(resultDate.getFullYear() + offset);
+    // 处理2月29日的情况
+    if (base.getMonth() === 1 && base.getDate() === 29 && resultDate.getMonth() !== 1) {
+      resultDate.setDate(0); // 设为上个月最后一天
     }
-};
+  } else if (unit === 'months') {
+    // 修复月份加减逻辑：先保存原始日期，然后处理溢出
+    const dayOfMonth = resultDate.getDate();
+    resultDate.setDate(1); // 先设为1号，避免溢出
+    resultDate.setMonth(resultDate.getMonth() + offset);
+    
+    // 获取目标月份的最后一天
+    const targetMonth = resultDate.getMonth();
+    const targetYear = resultDate.getFullYear();
+    const targetMonthLastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+    
+    // 恢复日期，如果原始日期大于目标月份最后一天，则设为最后一天
+    resultDate.setDate(Math.min(dayOfMonth, targetMonthLastDay));
+  }
+  
+  const unitNames = { days: '天', weeks: '周', months: '个月', years: '年' };
+  const dayOfWeek = resultDate.getDay();
+  const isWorkday = dayOfWeek !== 0 && dayOfWeek !== 6;
+  
+  const res = {
+    dateStr: Utils.formatDate(resultDate),
+    offset,
+    unitName: unitNames[unit],
+    isWorkday
+  };
+  
+  dateStore.set(s => ({ ...s, baseDate: baseStr, offset, unit, result: res }));
+  renderDateCalcResult(res);
+}
 
-window.refreshBook = async function(id) {
-    loadingMask.classList.remove('hidden'); loadingText.textContent = '正在重新解析...';
-    try {
-        await LocalCache.delete(id);
-        await DataManager.init(id, true); 
-        renderBookList(); 
-    } catch(e) { alert('刷新失败：' + e.message); } 
-    finally { loadingMask.classList.add('hidden'); }
-};
-
-window.openBook = async function(id) {
-    currentBookId = id;
-    loadingMask.classList.remove('hidden'); loadingText.textContent = '正在加载书籍...';
-    try {
-        const meta = await DataManager.init(id);
-        document.getElementById('bookshelf').classList.add('hidden');
-        document.getElementById('reader').classList.remove('hidden');
-        contentWrapper.innerHTML = ''; windowStart = 0; windowEnd = 0;
-        renderTocList();
-        
-        currentGlobalIdx = Math.min(meta.progress_gidx || 0, DataManager.totalParagraphs - 1);
-        currentChapterIdx = DataManager.getChapterByGlobalIdx(currentGlobalIdx).chapterIdx;
-        
-        applySettings();
-        teleportTo(currentGlobalIdx);
-        updateHeader(currentChapterIdx);
-        
-    } catch (e) { alert('加载失败：' + e.message); document.getElementById('bookshelf').classList.remove('hidden'); } 
-    finally { loadingMask.classList.add('hidden'); }
-};
-
-window.deleteBook = async function(id) {
-    if (confirm('确定删除这本书吗？')) { 
-        await LocalCache.delete(id); await API.deleteBook(id); renderBookList(); 
+// ═══════════════════════════════════════════
+// 8. 事件委托
+// ═══════════════════════════════════════════
+app.addEventListener('click', async e => {
+  const t = e.target, closest = sel => t.closest(sel);
+  if (closest('[data-action="home"]')) return location.hash = '#/';
+  
+  if (closest('#reset-number')) { 
+    const i = app.querySelector('#num-input'), o = app.querySelector('#num-output'); 
+    if(i) i.value=''; 
+    if(o) o.innerHTML = '<span class="text-[--muted] text-base font-sans font-normal">结果将显示在这里</span><div class="copy-icon" style="display:none">' + Icons.copy + '</div>'; 
+    return; 
+  }
+  
+  // 点击结果框复制结果
+  if (closest('#num-output')) {
+    const output = app.querySelector('#num-output');
+    const text = output.querySelector('span').textContent;
+    if (text && !text.includes('结果将显示在这里') && !text.includes('数字超出支持范围')) {
+      Utils.copy(text).then(() => Utils.showToast('已复制结果'));
     }
+    return;
+  }
+  
+  if (closest('#reset-image')) return resetStore(imageStore, { files: [], mode: 'fit', orient: 'auto', quality: 0.8 });
+  if (closest('#reset-pdf')) return resetStore(pdfStore, { mode: 'split', split: { file: null, fileName: '', pageCount: 0, method: 'pages', pages: 1, start: 1, end: 1 }, merge: { files: [] } });
+  if (closest('#reset-compress')) return resetStore(compressStore, { file: null, url: '', name: '', origSize: 0, quality: 0.8, format: 'jpeg', scale: 100, resultBlob: null, resultUrl: '', estimates: { jpeg: 0, webp: 0, png: 0 } });
+  if (closest('#reset-text')) return resetStore(textStore, { input: '', mode: 'upper' });
+  if (closest('#reset-qr')) return resetStore(qrStore, { text: '', logoUrl: '', mode: 'generate', parseResult: '' });
+  if (closest('#reset-mock')) return resetStore(mockStore, { type: 'uuid', count: 10, pwdLen: 12, pwdOpts: { upper: true, lower: true, num: true, sym: true }, numMin: 1, numMax: 100, numDec: 2, listText: '', listCount: 1, result: '' });
+  if (closest('#reset-date')) return resetStore(dateStore, { mode: 'diff', startDate: '', endDate: '', baseDate: '', offset: 1, unit: 'days', result: null });
+
+  for (const key of ['mode', 'orient', 'quality']) { const opt = closest(`[data-${key}]`); if (opt && app.querySelector('#convert-img-btn')) { app.querySelectorAll(`[data-${key}]`).forEach(o => o.classList.remove('active')); opt.classList.add('active'); imageStore.set(s => ({ ...s, [key]: key === 'quality' ? parseFloat(opt.dataset[key]) : opt.dataset[key] })); return; } }
+  
+  const rmImg = closest('[data-rm-img]'); if (rmImg) { const i = +rmImg.dataset.rmImg; const files = imageStore.get().files; URL.revokeObjectURL(files[i].url); files.splice(i, 1); imageStore.set(s => ({ ...s, files })); syncImageListDOM(); return; }
+  if (closest('#convert-img-btn')) return convertToPdf();
+
+  const pm = closest('[data-pdf-mode]'); if (pm) { pdfStore.set(s => ({ ...s, mode: pm.dataset.pdfMode })); return renderPdfTool(); }
+  if (closest('#split-remove')) { pdfStore.set(s => ({ ...s, split: { file: null, fileName: '', pageCount: 0, method: 'pages', pages: 1, start: 1, end: 1 } })); app.querySelector('#split-preview')?.classList.add('hidden'); app.querySelector('#split-opts')?.classList.add('hidden'); return; }
+  if (closest('#split-btn')) return splitPdf();
+  const rmPdf = closest('[data-rm-pdf]'); if (rmPdf) { const files = pdfStore.get().merge.files; files.splice(+rmPdf.dataset.rmPdf, 1); pdfStore.set(s => ({ ...s, merge: { files } })); return renderMergeList(); }
+  if (closest('#merge-btn')) return mergePdf();
+
+  const cfmt = closest('[data-cfmt]'); if (cfmt && app.querySelector('#comp-ctrl')) { app.querySelectorAll('[data-cfmt]').forEach(o => o.classList.remove('active')); cfmt.classList.add('active'); compressStore.set(s => ({ ...s, format: cfmt.dataset.cfmt })); renderFormatCards(); return doCompress(); }
+  if (closest('#comp-dl-btn')) { const s = compressStore.get(); if (s.resultUrl) Utils.downloadDataURL(s.resultUrl, `compressed_${Date.now()}.${s.format}`); return; }
+
+  const cm = closest('[data-case-mode]'); if (cm && app.querySelector('#tc-input')) { textStore.set(s => ({ ...s, mode: cm.dataset.caseMode })); app.querySelectorAll('[data-case-mode]').forEach(b => b.className = `btn ${b.dataset.caseMode === textStore.get().mode ? 'btn-primary' : 'btn-ghost'}`); return doTextCase(); }
+  if (closest('#tc-copy-btn')) { const v = app.querySelector('#tc-output').value; if (!v) return Utils.showToast('结果为空', true); Utils.copy(v).then(() => Utils.showToast('已复制结果')); return; }
+
+  const qm = closest('[data-qr-mode]'); if (qm) { qrStore.set(s => ({ ...s, mode: qm.dataset.qrMode })); return renderQrTool(); }
+  if (closest('#qr-dl-png')) { const canvas = app.querySelector('#qr-preview-box canvas'); if (canvas) Utils.downloadDataURL(canvas.toDataURL('image/png'), `qrcode_${Date.now()}.png`); else Utils.showToast('请先生成二维码', true); return; }
+  if (closest('#qr-dl-svg')) { 
+    const S = qrStore.get(); if(!S.text) return Utils.showToast('请先生成二维码', true);
+    let qr = qrcode(0, 'M'); qr.addData(S.text, 'Byte'); qr.make();
+    const count = qr.getModuleCount(), cell = 10; let rects = '';
+    for (let r = 0; r < count; r++) for (let c = 0; c < count; c++) if (qr.isDark(r, c)) rects += `<rect x="${c*cell}" y="${r*cell}" width="${cell}" height="${cell}"/>`;
+    Utils.downloadBlob(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${count*cell} ${count*cell}" shape-rendering="crispEdges">${rects}</svg>`, `qrcode_${Date.now()}.svg`, 'image/svg+xml'); return; 
+  }
+  if (closest('#qr-copy-img')) { const canvas = app.querySelector('#qr-preview-box canvas'); if (!canvas) return Utils.showToast('请先生成二维码', true); Utils.copyImage(canvas).then(() => Utils.showToast('图片已复制到剪贴板')).catch(() => Utils.showToast('复制失败，请尝试下载', true)); return; }
+  if (closest('#qr-parse-copy')) { const v = qrStore.get().parseResult; if (!v) return Utils.showToast('结果为空', true); Utils.copy(v).then(() => Utils.showToast('已复制结果')); return; }
+
+  const mt = closest('[data-mock-type]'); 
+  if (mt) { 
+    mockStore.set(s => ({ ...s, type: mt.dataset.mockType })); 
+    return renderMockTool(); 
+  }
+  if (closest('#mock-gen-btn')) return doGenerateMock();
+  if (closest('#mock-copy-btn')) { const v = mockStore.get().result; if (!v) return Utils.showToast('结果为空', true); Utils.copy(v).then(() => Utils.showToast('已复制结果')); return; }
+  if (closest('#mock-clear-btn')) { mockStore.set(s => ({ ...s, result: '' })); const el = app.querySelector('#mock-result'); if(el) el.textContent = '点击"立即生成"查看结果...'; return; }
+
+  const dm = closest('[data-date-mode]'); if (dm) { dateStore.set(s => ({ ...s, mode: dm.dataset.dateMode, result: null })); return renderDateTool(); }
+  if (closest('#date-calc-diff-btn')) return doCalculateDateDiff();
+  if (closest('#date-calc-offset-btn')) return doCalculateDateOffset();
+});
+
+app.addEventListener('input', e => {
+  const id = e.target.id;
+  if (id === 'num-input') return doConvert();
+  if (id === 'tc-input') return doTextCase();
+  if (id === 'qr-input') { qrStore.set(s => ({ ...s, text: e.target.value })); return Utils.debounce(doGenerateQR, 300)(); }
+  if (id === 'comp-q') { compressStore.set(s => ({ ...s, quality: e.target.value / 100 })); app.querySelector('#comp-q-val').textContent = e.target.value; return Utils.debounce(doCompress, 300)(); }
+  if (id === 'comp-s') { compressStore.set(s => ({ ...s, scale: parseInt(e.target.value) })); app.querySelector('#comp-s-val').textContent = e.target.value; return Utils.debounce(doCompress, 300)(); }
+  
+  if (id === 'split-pages') pdfStore.set(s => ({ ...s, split: { ...s.split, pages: parseInt(e.target.value) } }));
+  if (id === 'split-start') pdfStore.set(s => ({ ...s, split: { ...s.split, start: parseInt(e.target.value) } }));
+  if (id === 'split-end') pdfStore.set(s => ({ ...s, split: { ...s.split, end: parseInt(e.target.value) } }));
+  if (e.target.name === 'split-method') pdfStore.set(s => ({ ...s, split: { ...s.split, method: e.target.value } }));
+
+  if (id === 'mock-count') mockStore.set(s => ({ ...s, count: parseInt(e.target.value) }));
+  if (id === 'mock-pwd-len') { mockStore.set(s => ({ ...s, pwdLen: parseInt(e.target.value) })); e.target.previousElementSibling.textContent = `密码长度: ${e.target.value}`; }
+  if (id === 'pwd-upper') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, upper: e.target.checked } }));
+  if (id === 'pwd-lower') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, lower: e.target.checked } }));
+  if (id === 'pwd-num') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, num: e.target.checked } }));
+  if (id === 'pwd-sym') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, sym: e.target.checked } }));
+  if (id === 'mock-num-min') mockStore.set(s => ({ ...s, numMin: e.target.value }));
+  if (id === 'mock-num-max') mockStore.set(s => ({ ...s, numMax: e.target.value }));
+  if (id === 'mock-num-dec') mockStore.set(s => ({ ...s, numDec: parseInt(e.target.value) }));
+  if (id === 'mock-list') mockStore.set(s => ({ ...s, listText: e.target.value }));
+});
+
+app.addEventListener('files-selected', async e => {
+  const zone = e.target;
+  if (zone.id === 'img-drop') return handleImageFiles(e.detail);
+  if (zone.id === 'split-drop') {
+    const file = e.detail[0]; if (!file || file.type !== 'application/pdf') return Utils.showToast('请选择有效的PDF文件', true); if (file.size > 52428800) return Utils.showToast('文件大小不能超过 50MB', true);
+    const doc = await PDFLib.PDFDocument.load(await file.arrayBuffer());
+    const total = doc.getPageCount();
+    pdfStore.set(s => ({ ...s, split: { file, fileName: file.name, pageCount: total, method: 'pages', pages: 1, start: 1, end: total } }));
+    app.querySelector('#split-fname').textContent = file.name;
+    app.querySelector('#split-pcount').textContent = total;
+    app.querySelector('#split-end').value = total;
+    app.querySelector('#split-preview')?.classList.remove('hidden');
+    app.querySelector('#split-opts')?.classList.remove('hidden');
+  }
+  if (zone.id === 'merge-drop') {
+    const valid = Array.from(e.detail).filter(f => f.type === 'application/pdf' && f.size <= 52428800); if (!valid.length) return Utils.showToast('请选择有效的PDF文件', true);
+    const files = pdfStore.get().merge.files;
+    if (files.length + valid.length > 20) return Utils.showToast('最多支持合并 20 个 PDF 文件', true);
+    if ((files.reduce((a, f) => a + f.size, 0) + valid.reduce((a, f) => a + f.size, 0)) > 209715200) return Utils.showToast('合并文件总大小不能超过 200MB', true);
+    pdfStore.set(s => ({ ...s, merge: { files: [...files, ...valid] } })); renderMergeList();
+  }
+  if (zone.id === 'comp-drop') {
+    const file = e.detail[0]; if (!file || !file.type.startsWith('image/')) return Utils.showToast('请选择有效的图片', true);
+    const s = compressStore.get();
+    if (s.url) URL.revokeObjectURL(s.url); if (s.resultUrl) URL.revokeObjectURL(s.resultUrl);
+    const url = URL.createObjectURL(file);
+    compressStore.set({ file, url, name: file.name, origSize: file.size, quality: 0.8, format: 'jpeg', scale: 100, resultBlob: null, resultUrl: '', estimates: { jpeg: 0, webp: 0, png: 0 } });
+    app.querySelector('#comp-ctrl')?.classList.remove('hidden'); app.querySelector('#comp-orig-size').textContent = Utils.formatSize(file.size);
+    app.querySelector('#comp-new-size').textContent = '计算中...';
+    const preview = app.querySelector('#comp-preview'), placeholder = app.querySelector('#comp-placeholder');
+    if (preview) { preview.src = url; preview.classList.remove('hidden'); placeholder?.classList.add('hidden'); }
+    calculateEstimates(file); return doCompress();
+  }
+  if (zone.id === 'qr-logo-drop') {
+    const file = e.detail[0]; if (!file || !file.type.startsWith('image/')) return Utils.showToast('请选择有效的图片', true);
+    if (qrStore.get().logoUrl) URL.revokeObjectURL(qrStore.get().logoUrl);
+    qrStore.set(s => ({ ...s, logoUrl: URL.createObjectURL(file) })); return doGenerateQR();
+  }
+  if (zone.id === 'qr-parse-drop') {
+    const file = e.detail[0]; if (!file || !file.type.startsWith('image/')) return Utils.showToast('请选择有效的图片', true);
+    return doParseQR(file);
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  imageStore.get().files.forEach(f => URL.revokeObjectURL(f.url));
+  const cs = compressStore.get();
+  ['url', 'resultUrl'].forEach(k => { if (cs[k]) URL.revokeObjectURL(cs[k]); });
+  if (qrStore.get().logoUrl) URL.revokeObjectURL(qrStore.get().logoUrl);
+});
+
+// ═══════════════════════════════════════════
+// 9. 路由
+// ═══════════════════════════════════════════
+const ROUTES = { 
+  '/': renderHome, 
+  '/text-case': renderTextCaseTool,
+  '/qrcode-generator': renderQrTool,
+  '/pdf-split-merge': renderPdfTool,
+  '/date-calculator': renderDateTool,
+  '/number-to-chinese': renderNumberTool,
+  '/mock-generator': renderMockTool,
+  '/image-compress': renderCompressTool,
+  '/image-to-pdf': renderImageTool
 };
 
-importBtn.onclick = () => document.getElementById('file-input').click();
-document.getElementById('file-input').onchange = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    importBtn.disabled = true; loadingText.textContent = '正在后台解析并上传...'; loadingMask.classList.remove('hidden');
-    try {
-        const text = await file.text();
-        const parsed = await parseTextAsync(text, file.name);
-        const wordCount = parsed.paragraphs.reduce((s, p) => s + (p.type === 'p' ? p.text.length : 0), 0);
-        
-        const res = await API.createBook({
-            name: file.name.replace(/\.(txt|TXT)$/i, ''), 
-            content: text, 
-            chMap: JSON.stringify(parsed.chMap),
-            wordCount: wordCount,
-            totalChapters: parsed.chMap.length,
-            totalParagraphs: parsed.paragraphs.length
-        });
-        
-        if (res.success && res.id) {
-            await renderBookList();
-        }
-    } catch (err) { alert('导入失败：' + err.message); } 
-    finally { loadingMask.classList.add('hidden'); importBtn.disabled = false; e.target.value = ''; }
-};
-
-document.getElementById('toc-list').onclick = (e) => { const item = e.target.closest('.item'); if (item) jumpToChapter(parseInt(item.dataset.cidx)); };
-function renderTocList() { document.getElementById('toc-list').innerHTML = DataManager.chMap.map(ch => `<div class="item" data-cidx="${ch.chapterIdx}">${escapeHtml(ch.title)}</div>`).join(''); }
-
-(async function() { await LocalCache.init(); applySettings(); renderBookList(); })();
+function router() {
+  const base = (location.hash.slice(1) || '/').split('?')[0];
+  if (base !== '/image-to-pdf' && sortableInst) { sortableInst.destroy(); sortableInst = null; }
+  (ROUTES[base] || renderHome)(); window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', router);
+window.addEventListener('DOMContentLoaded', () => { if (!location.hash) location.hash = '#/'; else router(); });
 </script>
 </body>
 </html>
