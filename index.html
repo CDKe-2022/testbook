@@ -12,6 +12,8 @@
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@600;700&family=Fraunces:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -142,6 +144,7 @@ const Icons = {
   tool7: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>',
   tool8: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
   pdf: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h2a1 1 0 0 0 0-2H9v6"/><path d="M15 17v-6h2a1 1 0 1 1 0 2h-2"/></svg>',
+  img: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
   copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
   get: (name) => Icons[name] || ''
@@ -205,7 +208,6 @@ const Utils = {
       if (!allZero) { intRes += gStr + U[uIdx]; needZero = zc > 0; } else needZero = true;
     }
     let decRes = ''; if (decStr) { if (+decStr[0]) decRes += D[+decStr[0]] + '角'; if (decStr[1] && +decStr[1]) decRes += D[+decStr[1]] + '分'; }
-    // 修复：纯小数缺少“零元”的问题
     return (neg ? '负' : '') + (intRes ? intRes + '元' : (decRes ? '零元' : '')) + (decRes || (intRes ? '整' : ''));
   },
   convertCase(text, mode) {
@@ -214,7 +216,6 @@ const Utils = {
       case 'upper': return text.toUpperCase();
       case 'lower': return text.toLowerCase();
       case 'sentence': return text.toLowerCase().replace(/(^\s*\p{L}|[.!?。！？]\s*\p{L})/gu, c => c.toUpperCase());
-      // 修复：替换 \b 为负向预查，兼容中文等非 ASCII 边界
       case 'title': return text.toLowerCase().replace(/(?<![\p{L}\p{N}])\p{L}/gu, c => c.toUpperCase());
       case 'first': return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
       default: return text;
@@ -250,6 +251,7 @@ const dateStore = createStore({
   baseDate: '', offset: 1, unit: 'days',
   result: null
 });
+const p2iStore = createStore({ mode: 'word', scale: 1.5, format: 'jpeg' });
 
 let sortableInst = null, compressTaskId = 0;
 let currentFile = null, pdfJsDoc = null, pdfObserver = null, pdfArrayBuffer = null;
@@ -299,6 +301,7 @@ customElements.define('drop-zone', DropZone);
 const TOOLS = [
   { id: 'text-case', name: '大小写转换', desc: '一键转换英文大小写，支持句首、词首等5种模式。', icon: 'tool5' },
   { id: 'pdf-split-merge', name: 'PDF 可视化工作台', desc: '上传 PDF 可视化选择删除或保留页面，缩略图懒加载，本地处理。', icon: 'pdf' },
+  { id: 'pdf-to-image', name: 'PDF 转图片', desc: '将 PDF 每页转为高清图片，支持打包 ZIP 或直接嵌入 Word。', icon: 'img' },
   { id: 'date-calculator', name: '日期计算器', desc: '计算日期差值、工作日天数，或推算合同到期日。', icon: 'tool8' },
   { id: 'number-to-chinese', name: '数字转中文大写', desc: '输入阿拉伯数字，自动转换为人民币大写金额格式。', icon: 'tool1' },
   { id: 'mock-generator', name: '随机数据生成', desc: '批量生成UUID、随机密码、测试数据或幸运抽签。', icon: 'tool7' },
@@ -380,11 +383,73 @@ function renderPdfTool() {
   if (hasFile) initThumbnails();
 }
 
-// Tool 03: 日期计算器
+// Tool 03: PDF 转图片
+function renderPdfToImageTool() {
+  const S = p2iStore.get();
+  app.innerHTML = `${$header('PDF 转图片', 'Tool 03')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
+    <drop-zone id="p2i-drop" text="点击或拖拽 PDF 文件到此处" hint="支持 .pdf 格式，转换后的图片清晰度高" accept=".pdf"></drop-zone>
+    
+    <div class="mt-8 bg-white p-6 rounded-2xl border border-[--border] space-y-6">
+      <div>
+        <label class="block text-sm font-medium text-[--ink-soft] mb-3">输出模式</label>
+        <div class="flex gap-4 flex-wrap">
+          <div class="orient-option ${S.mode === 'word' ? 'active' : ''}" data-p2i-mode="word" role="button" tabindex="0">
+            <div class="font-bold mb-1">嵌入 Word 文档</div>
+            <div class="text-xs opacity-80">每页 PDF 对应一页 Word，生成 .doc 文件</div>
+          </div>
+          <div class="orient-option ${S.mode === 'zip' ? 'active' : ''}" data-p2i-mode="zip" role="button" tabindex="0">
+            <div class="font-bold mb-1">打包 ZIP 压缩包</div>
+            <div class="text-xs opacity-80">每页 PDF 转为单独的图片文件，打包下载</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap gap-3 items-center justify-between border-t border-[--border] pt-6">
+        <div class="flex gap-3 items-center">
+          <label class="text-sm text-[--ink-soft]">清晰度:</label>
+          <select id="p2i-scale" class="input w-32 py-2">
+            <option value="1" ${S.scale === 1 ? 'selected' : ''}>标准 (72 DPI)</option>
+            <option value="1.5" ${S.scale === 1.5 ? 'selected' : ''}>高清 (108 DPI)</option>
+            <option value="2" ${S.scale === 2 ? 'selected' : ''}>超清 (144 DPI)</option>
+            <option value="3" ${S.scale === 3 ? 'selected' : ''}>极清 (216 DPI)</option>
+          </select>
+        </div>
+        <div class="flex gap-3 items-center ${S.mode === 'zip' ? '' : 'hidden'}" id="p2i-format-wrap">
+          <label class="text-sm text-[--ink-soft]">图片格式:</label>
+          <select id="p2i-format" class="input w-32 py-2">
+            <option value="jpeg" ${S.format === 'jpeg' ? 'selected' : ''}>JPEG (体积小)</option>
+            <option value="png" ${S.format === 'png' ? 'selected' : ''}>PNG (无损)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="p2i-status" class="hidden mt-6 bg-white p-6 rounded-2xl border border-[--border] text-center">
+      <div class="text-lg font-semibold text-[--ink] mb-2" id="p2i-status-title">准备转换</div>
+      <div class="text-sm text-[--muted] mb-4" id="p2i-status-detail">请上传 PDF 文件</div>
+      <div class="w-full bg-[--bg-2] rounded-full h-2 overflow-hidden" id="p2i-progress-bar-bg">
+        <div class="bg-[--green] h-2 rounded-full transition-all duration-300" id="p2i-progress-bar" style="width: 0%"></div>
+      </div>
+    </div>
+
+    ${$infoCard('使用说明', [
+      '<b>嵌入 Word</b>：将 PDF 每页转为图片，嵌入 Word 并分页，生成 .doc 文件，排版绝对不会乱。',
+      '<b>打包 ZIP</b>：将 PDF 每页转为独立图片，打包成 .zip 压缩包下载。',
+      '建议选择“高清”或“超清”以保证文字清晰度。极清模式可能会导致内存占用过高。',
+      '所有转换均在本地浏览器完成，不上传服务器，安全私密。'
+    ])}
+  </main>`;
+
+  const fmtWrap = app.querySelector('#p2i-format-wrap');
+  if (S.mode === 'word') fmtWrap.classList.add('hidden');
+  else fmtWrap.classList.remove('hidden');
+}
+
+// Tool 04: 日期计算器
 function renderDateTool() {
   const S = dateStore.get();
   const today = new Date().toISOString().split('T')[0];
-  app.innerHTML = `${$header('日期计算器', 'Tool 03')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
+  app.innerHTML = `${$header('日期计算器', 'Tool 04')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
     <div class="flex gap-4 mb-8 justify-center">
       <button class="btn ${S.mode==='diff'?'btn-primary':'btn-ghost'}" data-date-mode="diff">计算日期差 (间隔)</button>
       <button class="btn ${S.mode==='calc'?'btn-primary':'btn-ghost'}" data-date-mode="calc">推算日期 (加减)</button>
@@ -428,9 +493,9 @@ function renderDateTool() {
   if (S.result && S.mode === 'calc') renderDateCalcResult(S.result);
 }
 
-// Tool 04: 数字转中文大写
+// Tool 05: 数字转中文大写
 function renderNumberTool() {
-  app.innerHTML = `${$header('数字转中文大写', 'Tool 04')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
+  app.innerHTML = `${$header('数字转中文大写', 'Tool 05')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
     <div class="bg-white p-8 rounded-2xl border border-[--border]">
       <div class="mb-6">
         <label class="block text-sm font-medium text-[--ink-soft] mb-2">输入数字</label>
@@ -454,10 +519,10 @@ function renderNumberTool() {
   </main>`;
 }
 
-// Tool 05: 随机数据生成
+// Tool 06: 随机数据生成
 function renderMockTool() {
   const S = mockStore.get();
-  app.innerHTML = `${$header('随机数据生成', 'Tool 05')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter">
+  app.innerHTML = `${$header('随机数据生成', 'Tool 06')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter">
     <div class="flex gap-2 mb-8 justify-center flex-wrap">
       <button class="btn ${S.type==='uuid'?'btn-primary':'btn-ghost'}" data-mock-type="uuid">UUID 序列</button>
       <button class="btn ${S.type==='password'?'btn-primary':'btn-ghost'}" data-mock-type="password">随机密码</button>
@@ -510,17 +575,17 @@ function renderMockTool() {
   </main>`;
 }
 
-// Tool 06: 图片压缩
+// Tool 07: 图片压缩
 function renderCompressTool() {
   const S = compressStore.get();
-  app.innerHTML = `${$header('图片压缩', 'Tool 06')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter"><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div><drop-zone id="comp-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP" accept="image/*"></drop-zone><div id="comp-ctrl" class="hidden mt-6 space-y-6"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">选择格式 (智能预估)</label><div class="grid grid-cols-3 gap-3" id="format-cards"></div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">质量: <span id="comp-q-val">${Math.round(S.quality * 100)}</span>%</label><input type="range" class="range-slider" id="comp-q" min="10" max="100" value="${S.quality * 100}"></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">缩放比例: <span id="comp-s-val">${S.scale}</span>%</label><input type="range" class="range-slider" id="comp-s" min="10" max="100" value="${S.scale}"></div></div></div><div><div class="grid grid-cols-2 gap-4 mb-6"><div class="stat-box"><div class="val" id="comp-orig-size">-</div><div class="lbl">原始大小</div></div><div class="stat-box"><div class="val text-[--accent]" id="comp-new-size">-</div><div class="lbl">压缩后大小</div></div></div><div class="bg-white rounded-xl border border-[--border] p-4 flex items-center justify-center min-h-[300px]"><img id="comp-preview" class="max-w-full max-h-[400px] rounded-lg hidden" alt="preview"><span id="comp-placeholder" class="text-[--muted]">上传图片后预览</span></div><div class="flex gap-3 mt-6"><button class="btn btn-primary flex-1" id="comp-dl-btn" disabled>下载压缩图片</button><button class="btn btn-ghost" id="reset-compress">重置</button></div></div></div>${$infoCard('使用说明', ['所有压缩处理均在本地浏览器完成，不上传服务器', '上传图片后会自动计算各格式预估大小', '点击格式卡片即可切换，WebP 通常体积最小'])}</main>`;
+  app.innerHTML = `${$header('图片压缩', 'Tool 07')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter"><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div><drop-zone id="comp-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP" accept="image/*"></drop-zone><div id="comp-ctrl" class="hidden mt-6 space-y-6"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">选择格式 (智能预估)</label><div class="grid grid-cols-3 gap-3" id="format-cards"></div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">质量: <span id="comp-q-val">${Math.round(S.quality * 100)}</span>%</label><input type="range" class="range-slider" id="comp-q" min="10" max="100" value="${S.quality * 100}"></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">缩放比例: <span id="comp-s-val">${S.scale}</span>%</label><input type="range" class="range-slider" id="comp-s" min="10" max="100" value="${S.scale}"></div></div></div><div><div class="grid grid-cols-2 gap-4 mb-6"><div class="stat-box"><div class="val" id="comp-orig-size">-</div><div class="lbl">原始大小</div></div><div class="stat-box"><div class="val text-[--accent]" id="comp-new-size">-</div><div class="lbl">压缩后大小</div></div></div><div class="bg-white rounded-xl border border-[--border] p-4 flex items-center justify-center min-h-[300px]"><img id="comp-preview" class="max-w-full max-h-[400px] rounded-lg hidden" alt="preview"><span id="comp-placeholder" class="text-[--muted]">上传图片后预览</span></div><div class="flex gap-3 mt-6"><button class="btn btn-primary flex-1" id="comp-dl-btn" disabled>下载压缩图片</button><button class="btn btn-ghost" id="reset-compress">重置</button></div></div></div>${$infoCard('使用说明', ['所有压缩处理均在本地浏览器完成，不上传服务器', '上传图片后会自动计算各格式预估大小', '点击格式卡片即可切换，WebP 通常体积最小'])}</main>`;
   renderFormatCards();
 }
 
-// Tool 07: 图片转 PDF
+// Tool 08: 图片转 PDF
 function renderImageTool() {
   const S = imageStore.get();
-  app.innerHTML = `${$header('图片转 PDF', 'Tool 07')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter"><drop-zone id="img-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP, HEIC" accept="image/*,.heic,.heif" multiple></drop-zone><div id="img-section" class="hidden mt-8"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-semibold text-[--ink]">已选图片 <span id="img-count" class="text-[--muted] font-normal text-sm"></span></h3><button class="btn btn-ghost btn-sm" id="reset-image">重置</button></div><div id="img-list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4"></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面模式</label><div class="flex gap-3 flex-wrap">${$optGroup('mode', S.mode)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面方向</label><div class="flex gap-3 flex-wrap">${$optGroup('orient', S.orient)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">压缩等级</label><div class="flex gap-3 flex-wrap">${$optGroup('quality', S.quality)}</div></div></div><div class="mt-10 text-center"><button class="btn btn-primary text-lg px-12 py-4" id="convert-img-btn">生成并下载 PDF</button></div>${$infoCard('使用说明', ['所有图片处理均在本地完成', 'HEIC/HEIF 格式将自动转换为 JPEG', '拖拽排序：长按缩略图拖动调整顺序'])}</main>`;
+  app.innerHTML = `${$header('图片转 PDF', 'Tool 08')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter"><drop-zone id="img-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP, HEIC" accept="image/*,.heic,.heif" multiple></drop-zone><div id="img-section" class="hidden mt-8"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-semibold text-[--ink]">已选图片 <span id="img-count" class="text-[--muted] font-normal text-sm"></span></h3><button class="btn btn-ghost btn-sm" id="reset-image">重置</button></div><div id="img-list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4"></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面模式</label><div class="flex gap-3 flex-wrap">${$optGroup('mode', S.mode)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面方向</label><div class="flex gap-3 flex-wrap">${$optGroup('orient', S.orient)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">压缩等级</label><div class="flex gap-3 flex-wrap">${$optGroup('quality', S.quality)}</div></div></div><div class="mt-10 text-center"><button class="btn btn-primary text-lg px-12 py-4" id="convert-img-btn">生成并下载 PDF</button></div>${$infoCard('使用说明', ['所有图片处理均在本地完成', 'HEIC/HEIF 格式将自动转换为 JPEG', '拖拽排序：长按缩略图拖动调整顺序'])}</main>`;
   syncImageListDOM();
   const list = app.querySelector('#img-list');
   if (sortableInst) sortableInst.destroy();
@@ -565,7 +630,6 @@ function renderDateDiffResult(res) {
   const el = app.querySelector('#date-diff-result');
   if (!el) return;
   el.classList.remove('hidden');
-  // 修复：过滤掉为 0 的单位，避免“0 年 0 个月 X 天”
   const parts = [];
   if (res.years > 0) parts.push(`${res.years} 年`);
   if (res.months > 0) parts.push(`${res.months} 个月`);
@@ -686,7 +750,6 @@ async function processPdf() {
   btn.setAttribute('disabled', '');
   btn.innerHTML = '<div class="spinner"></div> 处理中...';
   try {
-    // 修复：直接使用缓存的 arrayBuffer 避免大文件二次读取
     const pdfDoc = await PDFLib.PDFDocument.load(pdfArrayBuffer);
     const newDoc = await PDFLib.PDFDocument.create();
     let pagesToKeep = [];
@@ -708,6 +771,82 @@ async function processPdf() {
   } finally {
     btn.removeAttribute('disabled');
     btn.innerHTML = '处理并下载 PDF';
+  }
+}
+
+// PDF 转图片
+async function convertPdfToImages(file) {
+  if (!file || file.type !== 'application/pdf') return Utils.showToast('请选择有效的PDF文件', true);
+  
+  const S = p2iStore.get();
+  const statusBox = app.querySelector('#p2i-status');
+  const titleEl = app.querySelector('#p2i-status-title');
+  const detailEl = app.querySelector('#p2i-status-detail');
+  const bar = app.querySelector('#p2i-progress-bar');
+  
+  statusBox.classList.remove('hidden');
+  titleEl.textContent = '正在解析 PDF...';
+  detailEl.textContent = '请稍候';
+  bar.style.width = '0%';
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const totalPages = doc.numPages;
+    const zip = new JSZip(); // 初始化 JSZip
+
+    let htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>PDF 转 Word</title></head><body>`;
+    
+    for (let i = 1; i <= totalPages; i++) {
+      titleEl.textContent = `正在转换...`;
+      detailEl.textContent = `已处理 ${i} / ${totalPages} 页`;
+      bar.style.width = `${(i / totalPages) * 100}%`;
+      
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: S.scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      
+      if (S.mode === 'word') {
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        htmlContent += `<img src="${imgData}" style="width:100%;"/>`;
+        if (i < totalPages) {
+          htmlContent += `<br clear=all style='page-break-before:always'>`;
+        }
+      } else if (S.mode === 'zip') {
+        const blob = await new Promise(res => canvas.toBlob(res, `image/${S.format}`, 0.92));
+        const imgName = `${file.name.replace(/\.pdf$/i, '')}_第${String(i).padStart(3, '0')}页.${S.format === 'jpeg' ? 'jpg' : 'png'}`;
+        zip.file(imgName, blob);
+      }
+    }
+    
+    titleEl.textContent = '正在生成文件...';
+    detailEl.textContent = '即将开始下载';
+    
+    if (S.mode === 'word') {
+      htmlContent += `</body></html>`;
+      const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+      saveAs(blob, file.name.replace(/\.pdf$/i, '') + '.doc');
+    } else if (S.mode === 'zip') {
+      const content = await zip.generateAsync({ type: "blob" }, (metadata) => {
+        detailEl.textContent = `正在打包: ${metadata.percent.toFixed(0)}%`;
+      });
+      saveAs(content, file.name.replace(/\.pdf$/i, '') + '_图片包.zip');
+    }
+    
+    titleEl.textContent = '转换完成！';
+    detailEl.textContent = '文件已开始下载';
+    Utils.showToast('文件已生成！');
+    
+  } catch (err) {
+    console.error(err);
+    titleEl.textContent = '转换失败';
+    detailEl.textContent = 'PDF 可能已加密或损坏，或内存不足';
+    Utils.showToast('转换失败: ' + err.message, true);
   }
 }
 
@@ -1044,6 +1183,18 @@ app.addEventListener('click', async e => {
     return;
   }
   if (closest('#btn-process')) return processPdf();
+
+  // PDF 转图片
+  const p2iMode = closest('[data-p2i-mode]');
+  if (p2iMode) {
+    const mode = p2iMode.dataset.p2iMode;
+    p2iStore.set(s => ({ ...s, mode }));
+    app.querySelectorAll('[data-p2i-mode]').forEach(el => el.classList.toggle('active', el.dataset.p2iMode === mode));
+    const fmtWrap = app.querySelector('#p2i-format-wrap');
+    if (mode === 'word') fmtWrap.classList.add('hidden');
+    else fmtWrap.classList.remove('hidden');
+    return;
+  }
 });
 
 app.addEventListener('input', e => {
@@ -1063,6 +1214,16 @@ app.addEventListener('input', e => {
   if (id === 'mock-num-max') mockStore.set(s => ({ ...s, numMax: e.target.value }));
   if (id === 'mock-num-dec') mockStore.set(s => ({ ...s, numDec: parseInt(e.target.value) }));
   if (id === 'mock-list') mockStore.set(s => ({ ...s, listText: e.target.value }));
+
+  if (id === 'p2i-scale') p2iStore.set(s => ({ ...s, scale: parseFloat(e.target.value) }));
+  if (id === 'p2i-format') p2iStore.set(s => ({ ...s, format: e.target.value }));
+});
+
+app.addEventListener('change', e => {
+  if (e.target.id === 'p2i-scale' || e.target.id === 'p2i-format') {
+    // 触发 input 事件兼容处理
+    app.dispatchEvent(new InputEvent('input', { bubbles: true, data: e.target.value, target: e.target }));
+  }
 });
 
 app.addEventListener('files-selected', async e => {
@@ -1076,7 +1237,6 @@ app.addEventListener('files-selected', async e => {
     try {
       Utils.showToast('正在解析 PDF...');
       pdfArrayBuffer = await file.arrayBuffer();
-      // 修复：传递副本给 pdf.js 以防止其转移所有权导致后续 pdf-lib 无法读取
       pdfJsDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer.slice(0) }).promise;
       currentFile = file;
       pdfStore.set({ fileName: file.name, pageCount: pdfJsDoc.numPages, mode: 'delete', selected: [] });
@@ -1086,6 +1246,10 @@ app.addEventListener('files-selected', async e => {
       if (dropEl) dropEl.style.pointerEvents = 'auto';
     }
     return;
+  }
+  if (zone.id === 'p2i-drop') {
+    const file = e.detail[0];
+    return convertPdfToImages(file);
   }
   if (zone.id === 'comp-drop') {
     const file = e.detail[0]; if (!file || !file.type.startsWith('image/')) return Utils.showToast('请选择有效的图片', true);
@@ -1115,6 +1279,7 @@ const ROUTES = {
   '/': renderHome,
   '/text-case': renderTextCaseTool,
   '/pdf-split-merge': renderPdfTool,
+  '/pdf-to-image': renderPdfToImageTool,
   '/date-calculator': renderDateTool,
   '/number-to-chinese': renderNumberTool,
   '/mock-generator': renderMockTool,
