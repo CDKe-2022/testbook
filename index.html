@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
-<title>工作水印相机1.0</title>
+<title>工作水印相机</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -127,7 +127,6 @@ body{
   font-family:inherit;cursor:pointer;margin-top:8px;
 }
 
-/* 修复 CSS 优先级 Bug：移除 #editorView 的 display:flex，让它受 .view 控制 */
 #editorView{background:var(--bg);z-index:2}
 
 .preview-area{
@@ -370,7 +369,6 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 
 <script>
 // ================= 配置区 =================
-// 已填入你提供的高德 Web服务 Key
 const AMAP_KEY = 'aa30998599ef699354a51a1236aa6946'; 
 // ==========================================
 
@@ -402,7 +400,6 @@ function debounce(func, wait) {
   };
 }
 
-// 修复 Bug：将 debouncedDrawResult 提前定义，防止 TDZ 报错
 const debouncedDrawResult = debounce(drawResult, 300);
 
 function haptic(style = 'light') {
@@ -411,7 +408,6 @@ function haptic(style = 'light') {
   }
 }
 
-// 1. 内置 JSONP 请求函数 (解决本地 HTML 跨域报错的核心)
 function jsonpRequest(url) {
   return new Promise((resolve, reject) => {
     const callbackName = 'amap_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
@@ -430,7 +426,6 @@ function jsonpRequest(url) {
 }
 
 async function init(){
-  // 优化：等待 Google 字体加载完成，防止 Canvas 绘制时字体 fallback 导致排版错乱
   if (document.fonts) {
     await document.fonts.ready;
   }
@@ -667,7 +662,6 @@ function requestLocation(){
   );
 }
 
-// 2. 替换后的高德逆地理编码函数 (使用 JSONP 绕过跨域)
 async function reverseGeocode(lat, lng){
   const locText = document.getElementById('locText');
   const locEl = document.getElementById('topLoc');
@@ -675,7 +669,6 @@ async function reverseGeocode(lat, lng){
   const locError = document.getElementById('locError');
 
   try {
-    // 注意：高德 location 参数顺序是 经度,纬度 (lng,lat)
     const url = `https://restapi.amap.com/v3/geocode/regeo?output=JSON&location=${lng},${lat}&key=${AMAP_KEY}&radius=1000&extensions=all`;
     const data = await jsonpRequest(url);
 
@@ -741,6 +734,30 @@ function switchView(viewId){
   }
 }
 
+// 极简几何图标绘制辅助函数
+function drawIconDot(ctx, x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawIconSquare(ctx, x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, size, size);
+}
+
+function drawIconTag(ctx, x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y + size/2);
+  ctx.lineTo(x + size/2, y);
+  ctx.lineTo(x + size, y + size/2);
+  ctx.lineTo(x + size/2, y + size);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawResult(){
   if(!state.capturedImage) return;
   const canvas = document.getElementById('resultCanvas');
@@ -754,29 +771,34 @@ function drawResult(){
   const topBorder = sideBorder;
   const padding = sideBorder * 0.8;
 
-  // 动态计算字体大小
+  // 动态计算字体大小 (Slate 色系)
   const baseFont = Math.max(W * 0.024, 14);
-  const timeFont = baseFont * 1.6;
-  const infoFont = baseFont * 1.1;
+  const timeFont = baseFont * 1.8; // 时间最大
+  const infoFont = baseFont * 1.2; // 地点次之
+  const smallFont = baseFont * 0.9; // 其他最小
+  const iconSize = baseFont * 0.8;
 
-  // 修复 Bug：动态计算文字区域需要的最小高度，确保白边绝对能容纳文字
-  const textHeight = padding * 0.8 + timeFont * 1.4 + infoFont * 1.6 + infoFont * 1.2 + padding;
+  // 计算文字区域需要的最小高度 (上下分层布局)
+  // 时间行 + 地点行 + 类型行 + 分割线间距 + 底部元数据行 + 上下padding
+  const lineHeight = 1.6;
+  const textHeight = padding * 2 + (timeFont * lineHeight) + (infoFont * lineHeight) + (smallFont * lineHeight) + (smallFont * lineHeight) + 20;
+  
   let bottomBorder = Math.max(H * 0.2, textHeight);
-  if (W / H < 0.8) { // 竖图
-      bottomBorder = Math.max(H * 0.15, textHeight);
-  }
 
   canvas.width = W + sideBorder * 2;
   canvas.height = H + topBorder + bottomBorder;
 
+  // 绘制白色背景
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // 绘制图片
   ctx.drawImage(img, sideBorder, topBorder, W, H);
 
-  drawWatermarkText(ctx, canvas.width, canvas.height, W, H, sideBorder, topBorder, bottomBorder);
+  drawWatermarkText(ctx, canvas.width, canvas.height, W, H, sideBorder, topBorder, bottomBorder, timeFont, infoFont, smallFont, iconSize, padding);
 }
 
-function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB) {
+function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB, timeFont, infoFont, smallFont, iconSize, padding) {
   const time = document.getElementById('inputTime').value || formatTime(new Date());
   const type = document.getElementById('inputType').value || '现场核查';
   const location = document.getElementById('inputLocation').value || '未填写地点';
@@ -785,62 +807,73 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB) {
   const device = document.getElementById('inputDevice').value || 'iPhone 13 Pro';
   const note = document.getElementById('inputNote').value;
 
-  const padding = sideB * 0.8;
   const textAreaY = topB + imgH;
-
-  const baseFont = Math.max(imgW * 0.024, 14);
-  const timeFont = baseFont * 1.6;
-  const infoFont = baseFont * 1.1;
-  const smallFont = baseFont * 0.9;
-
   const leftX = sideB + padding;
   const rightX = sideB + imgW - padding;
-  const splitLineX = sideB + imgW * 0.62;
+  const maxTextWidth = rightX - leftX - iconSize - padding * 0.5;
 
-  // 修复 Bug：移除所有 Emoji，改用纯文本标签，彻底解决 iOS Canvas 渲染崩溃问题
-  // 1. 绘制时间 (左侧)
-  ctx.fillStyle = '#111827';
+  const lineHeight = 1.6;
+  let currentY = textAreaY + padding;
+
+  // 配色方案 (Slate 深蓝灰系)
+  const colorPrimary = '#2563EB'; // 皇家蓝 (图标/强调)
+  const colorText1 = '#0F172A';   // 极深蓝灰 (时间)
+  const colorText2 = '#334155';   // 深石板蓝 (地点)
+  const colorText3 = '#64748B';   // 冷灰蓝 (类型/坐标/设备)
+  const colorLine = '#E2E8F0';    // 极淡蓝灰 (分割线)
+
+  // 1. 绘制时间 (第一层)
+  drawIconDot(ctx, leftX, currentY + (timeFont - iconSize)/2, iconSize, colorPrimary);
+  ctx.fillStyle = colorText1;
   ctx.font = `700 ${timeFont}px 'JetBrains Mono', monospace`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('[时间] ' + time, leftX, textAreaY + padding * 0.8);
+  ctx.fillText(time, leftX + iconSize + padding * 0.5, currentY);
+  currentY += timeFont * lineHeight;
 
-  // 2. 绘制地址 (左侧)
-  ctx.fillStyle = '#374151';
+  // 2. 绘制地点 (第二层)
+  drawIconSquare(ctx, leftX, currentY + (infoFont - iconSize)/2, iconSize, colorPrimary);
+  ctx.fillStyle = colorText2;
   ctx.font = `500 ${infoFont}px 'Noto Sans SC', sans-serif`;
-  let maxLeftW = splitLineX - leftX - padding;
-  let locText = truncateText(ctx, location, maxLeftW);
-  ctx.fillText('[地点] ' + locText, leftX, textAreaY + padding * 0.8 + timeFont * 1.4);
+  let locText = truncateText(ctx, location, maxTextWidth);
+  ctx.fillText(locText, leftX + iconSize + padding * 0.5, currentY);
+  currentY += infoFont * lineHeight;
 
-  // 3. 绘制类型/备注 (左侧)
-  ctx.fillStyle = '#6b7280';
-  ctx.font = `400 ${infoFont}px 'Noto Sans SC', sans-serif`;
+  // 3. 绘制类型与备注 (第三层)
+  drawIconTag(ctx, leftX, currentY + (smallFont - iconSize)/2, iconSize, colorPrimary);
+  ctx.fillStyle = colorText3;
+  ctx.font = `400 ${smallFont}px 'Noto Sans SC', sans-serif`;
   let typeText = type + (note ? ` · ${note}` : '');
-  typeText = truncateText(ctx, typeText, maxLeftW);
-  ctx.fillText('[类型] ' + typeText, leftX, textAreaY + padding * 0.8 + timeFont * 1.4 + infoFont * 1.6);
+  typeText = truncateText(ctx, typeText, maxTextWidth);
+  ctx.fillText(typeText, leftX + iconSize + padding * 0.5, currentY);
+  currentY += smallFont * lineHeight + 10; // 增加一点间距给分割线
 
-  // 4. 绘制分割线 (带透明度)
-  ctx.strokeStyle = 'rgba(209, 213, 219, 0.6)';
+  // 4. 绘制分割线
+  ctx.strokeStyle = colorLine;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(splitLineX, textAreaY + padding);
-  ctx.lineTo(splitLineX, textAreaY + bottomB - padding);
+  ctx.moveTo(leftX, currentY);
+  ctx.lineTo(rightX, currentY);
   ctx.stroke();
+  currentY += 15;
 
-  // 5. 绘制设备 (右侧)
-  ctx.fillStyle = '#374151';
-  ctx.font = `600 ${infoFont}px 'Noto Sans SC', sans-serif`;
+  // 5. 绘制底部元数据 (设备 + 坐标) - 左右分布
+  ctx.fillStyle = colorText3;
+  ctx.font = `400 ${smallFont}px 'Noto Sans SC', sans-serif`;
+  ctx.textBaseline = 'top';
+  
+  // 左侧：设备
+  ctx.textAlign = 'left';
+  let devText = truncateText(ctx, device, (rightX - leftX) / 2 - iconSize - padding * 0.5);
+  ctx.fillText(devText, leftX, currentY);
+
+  // 右侧：坐标
   ctx.textAlign = 'right';
-  let devText = truncateText(ctx, device, rightX - splitLineX - padding);
-  ctx.fillText('[设备] ' + devText, rightX, textAreaY + padding * 0.8);
-
-  // 6. 绘制经纬度 (右侧)
-  ctx.fillStyle = '#6b7280';
-  ctx.font = `400 ${smallFont}px 'JetBrains Mono', monospace`;
   let coordText = '';
   if(lat && lng) coordText = `${formatCoord(lat, 'N')} ${formatCoord(lng, 'E')}`;
   if(coordText) {
-    ctx.fillText('[坐标] ' + coordText, rightX, textAreaY + padding * 0.8 + timeFont * 1.4);
+    coordText = truncateText(ctx, coordText, (rightX - leftX) / 2);
+    ctx.fillText(coordText, rightX, currentY);
   }
 }
 
