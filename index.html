@@ -1,1300 +1,1085 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>工具集 · 效率工具箱</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-  <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
-  <script src="https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@600;700&family=Fraunces:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #faf8f3; --bg-2: #f0ebe0; --ink: #1a2e2a; --ink-soft: #4a5a55; --muted: #8b9690;
-      --accent: #c2410c; --accent-soft: #fde4d4; --border: #e8e2d5; --green: #1a3a32; --green-2: #2d5247; --green-light: #f0f4f2;
-      --shadow-sm: 0 1px 2px rgba(26,46,42,.04), 0 4px 12px rgba(26,46,42,.06);
-      --shadow-md: 0 4px 12px rgba(26,46,42,.08), 0 12px 32px rgba(26,46,42,.1);
-      --shadow-lg: 0 8px 24px rgba(26,46,42,.1), 0 24px 56px rgba(26,46,42,.15);
-      --transition: all .3s cubic-bezier(.4,0,.2,1);
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0}
-    body{font-family:'Noto Sans SC',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-    ::-webkit-scrollbar{width:8px;height:8px}
-    ::-webkit-scrollbar-track{background:var(--bg-2)}
-    ::-webkit-scrollbar-thumb{background:var(--muted);border-radius:4px}
-    ::-webkit-scrollbar-thumb:hover{background:var(--ink-soft)}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:var(--transition);font-family:inherit;white-space:nowrap;line-height:1.5;position:relative;overflow:hidden}
-    .btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:rgba(255,255,255,.2);transform:translate(-50%,-50%);transition:width .6s,height .6s}
-    .btn:active::after{width:300px;height:300px}
-    .btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
-    .btn-primary{background:var(--green);color:#fff;box-shadow:var(--shadow-sm)}
-    .btn-primary:hover{background:var(--green-2);transform:translateY(-2px);box-shadow:var(--shadow-md)}
-    .btn-ghost{background:transparent;color:var(--ink-soft);border-color:var(--border)}
-    .btn-ghost:hover{background:var(--bg-2);color:var(--ink);border-color:var(--ink-soft);transform:translateY(-1px)}
-    .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none!important;pointer-events:none}
-    .tool-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:28px;cursor:pointer;transition:var(--transition);height:100%;text-decoration:none;color:inherit;display:block;position:relative;overflow:hidden}
-    .tool-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:4px;background:linear-gradient(90deg,var(--green),var(--green-2));transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
-    .tool-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:var(--green-2)}
-    .tool-card:hover::before{transform:scaleX(1)}
-    .tool-icon{width:56px;height:56px;background:var(--green-light);border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--green);margin-bottom:24px;transition:var(--transition)}
-    .tool-card:hover .tool-icon{background:var(--green);color:#fff;transform:scale(1.08) rotate(-5deg)}
-    .input,.textarea{width:100%;padding:16px 20px;border:1px solid var(--border);border-radius:12px;background:#fff;font-family:inherit;font-size:16px;color:var(--ink);transition:var(--transition)}
-    .textarea{min-height:200px;resize:vertical;line-height:1.6}
-    .input:focus,.textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 4px rgba(26,58,50,.08)}
-    .result-box{background:var(--green-light);border:1px solid var(--border);border-radius:12px;padding:24px;min-height:96px;font-family:'Noto Serif SC',serif;font-size:24px;color:var(--green);font-weight:600;line-height:1.6;word-break:break-all;display:flex;align-items:center;transition:var(--transition);cursor:pointer;position:relative}
-    .result-box:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
-    .result-box .copy-icon{position:absolute;top:12px;right:12px;opacity:0;transition:opacity .2s;color:var(--green);width:18px;height:18px}
-    .result-box:hover .copy-icon{opacity:0.6}
-    .drop-zone{display:block;border:2px dashed var(--border);border-radius:20px;padding:56px 32px;text-align:center;background:#fff;transition:var(--transition);cursor:pointer;position:relative;overflow:hidden}
-    .drop-zone::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(26,58,50,.03) 0%,transparent 70%);opacity:0;transition:opacity .3s ease}
-    .drop-zone.dragover{border-color:var(--green);background:var(--green-light);transform:scale(1.01)}
-    .drop-zone.dragover::before{opacity:1}
-    .drop-zone:hover{border-color:var(--ink-soft);background:var(--bg-2)}
-    .drop-zone .drop-zone-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%}
-    .drop-zone .tool-icon{margin-bottom:16px}
-    .thumb{position:relative;width:100%;aspect-ratio:1;background:var(--bg-2);border-radius:12px;overflow:hidden;border:1px solid var(--border);transition:var(--transition);cursor:grab}
-    .thumb:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
-    .thumb img{width:100%;height:100%;object-fit:cover;pointer-events:none}
-    .thumb-remove{position:absolute;top:6px;right:6px;width:24px;height:24px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
-    .thumb:hover .thumb-remove{opacity:1}
-    .thumb-orient{position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px}
-    .thumb-num{position:absolute;top:6px;left:6px;background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
-    .thumb.dragging{opacity:.4}
-    .orient-option{flex:1;padding:16px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer;text-align:center;transition:var(--transition);font-size:14px;color:var(--ink-soft);min-width:0}
-    .orient-option:hover{border-color:var(--ink-soft);transform:translateY(-2px)}
-    .orient-option.active{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 4px 12px rgba(26,50,50,.2)}
-    .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--green);color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg);z-index:1000;transition:transform .4s cubic-bezier(.16,1,.3,1);display:flex;align-items:center;gap:8px;font-weight:500}
-    .toast.show{transform:translateX(-50%) translateY(0)}
-    .toast.error{background:var(--accent)}
-    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .tool-num{display:inline-flex;align-items:center;gap:6px;font-family:'Fraunces',serif;font-size:12px;letter-spacing:.15em;color:var(--muted);text-transform:uppercase}
-    .info-card{background:var(--green-light);border:1px solid var(--border);border-radius:16px;padding:24px;transition:var(--transition)}
-    .info-card:hover{box-shadow:var(--shadow-sm)}
-    .hidden{display:none!important}
-    .result-container{position:relative}
-    .stat-box{background:var(--bg-2);border-radius:12px;padding:16px;text-align:center;transition:var(--transition)}
-    .stat-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
-    .stat-box .val{font-size:24px;font-weight:700;color:var(--green)}
-    .stat-box .lbl{font-size:12px;color:var(--muted);margin-top:4px}
-    .range-slider{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:var(--border);outline:none}
-    .range-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--green);cursor:pointer;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .2s}
-    .range-slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
-    .format-card{cursor:pointer;border:2px solid transparent;transition:var(--transition);border-radius:12px}
-    .format-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
-    .format-card.active{border-color:var(--green);background:var(--green-light)}
-    .mock-result{font-family:monospace;font-size:14px;line-height:1.8;white-space:pre-wrap;background:var(--bg-2);padding:20px;border-radius:12px;min-height:300px;max-height:500px;overflow-y:auto;border:1px solid var(--border)}
-    .date-result-card{background:var(--green-light);border:1px solid var(--border);border-radius:20px;padding:32px;text-align:center;transition:var(--transition)}
-    .date-result-card:hover{box-shadow:var(--shadow-md)}
-    .date-result-card .big-num{font-size:48px;font-weight:800;color:var(--green);line-height:1}
-    .date-result-card .big-lbl{font-size:14px;color:var(--ink-soft);margin-top:8px}
-    .page-enter{animation:pageEnter .4s ease forwards}
-    @keyframes pageEnter{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-    .thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:24px;padding:24px;background:var(--bg-2);border-radius:20px;border:1px solid var(--border)}
-    .pdf-thumb{position:relative;background:#fff;border:2px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:var(--transition);box-shadow:var(--shadow-sm);aspect-ratio:1/1.414;display:flex;flex-direction:column}
-    .pdf-thumb:hover{transform:translateY(-4px);box-shadow:var(--shadow-md);border-color:var(--ink-soft)}
-    .pdf-thumb.selected{border-color:var(--green);background:var(--green-light);box-shadow:0 0 0 4px rgba(26,58,50,.1)}
-    .thumb-canvas-wrapper{flex:1;display:flex;align-items:center;justify-content:center;background:#f8f9fa;overflow:hidden;position:relative}
-    .thumb-canvas{max-width:100%;max-height:100%;object-fit:contain;display:block}
-    .thumb-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8);color:var(--muted);font-size:12px;backdrop-filter:blur(2px)}
-    .thumb-label{padding:8px;text-align:center;font-size:12px;font-weight:500;color:var(--ink-soft);background:#fff;border-top:1px solid var(--border)}
-    .pdf-thumb.selected .thumb-label{background:var(--green);color:#fff;border-color:var(--green)}
-    .thumb-check{position:absolute;top:8px;right:8px;width:24px;height:24px;background:var(--green);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.5);transition:var(--transition);box-shadow:0 2px 8px rgba(0,0,0,.2)}
-    .pdf-thumb.selected .thumb-check{opacity:1;transform:scale(1)}
-    .mode-delete .pdf-thumb.selected::after{content:'';position:absolute;inset:0;background:rgba(194,65,12,.2);pointer-events:none;z-index:5}
-    .mode-delete .pdf-thumb.selected .thumb-check{background:var(--accent)}
-    .mode-delete .pdf-thumb.selected .thumb-check::before{content:'✕';font-weight:bold}
-    .mode-delete .pdf-thumb.selected .thumb-label{background:var(--accent);text-decoration:line-through}
-    @media (max-width: 768px) {
-      .tool-card{padding:20px}
-      .tool-icon{width:48px;height:48px;margin-bottom:16px}
-      .btn{padding:8px 16px;font-size:13px}
-      .input,.textarea{padding:12px 16px;font-size:14px}
-      .result-box{font-size:20px;padding:16px}
-      .drop-zone{padding:32px 16px}
-      .split-opts-container{flex-wrap:wrap}
-      .thumb-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:16px;padding:16px}
-    }
-    :focus-visible{outline:2px solid var(--green);outline-offset:2px}
-    .bg-decoration{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden}
-    .bg-decoration::before{content:'';position:absolute;top:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(circle,rgba(26,58,50,.05) 0%,transparent 70%);border-radius:50%}
-    .bg-decoration::after{content:'';position:absolute;bottom:-20%;left:-10%;width:50%;height:50%;background:radial-gradient(circle,rgba(194,65,12,.03) 0%,transparent 70%);border-radius:50%}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0d9488">
+<title>工作水印相机</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f2f5;
+  --surface:#ffffff;
+  --surface-2:#f8f9fa;
+  --surface-3:#f1f3f5;
+  --border:#e5e7eb;
+  --border-hi:#d1d5db;
+  --fg:#1f2937;
+  --fg-2:#374151;
+  --muted:#9ca3af;
+  --muted-hi:#6b7280;
+  --accent:#0d9488;
+  --accent-hi:#14b8a6;
+  --accent-dark:#0f766e;
+  --accent-soft:rgba(13,148,136,0.08);
+  --danger:#ef4444;
+  --warning:#f59e0b;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:0 12px 32px rgba(0,0,0,0.15);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);color:var(--fg);
+  -webkit-font-smoothing:antialiased;
+  user-select:none;-webkit-user-select:none;
+}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ===== 视图容器 ===== */
+.view{position:fixed;inset:0;display:none;flex-direction:column}
+.view.active{display:flex}
+
+/* ===== 相机视图 ===== */
+#cameraView{background:#000;z-index:1}
+#cameraView .preview-container{
+  flex:1;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+#cameraVideo{
+  width:100%;height:100%;object-fit:cover;
+  transform:scaleX(-1); /* 前置镜像，后置不影响观感 */
+}
+#cameraCanvas{display:none}
+
+/* 取景框辅助线 */
+.grid-overlay{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(to right,rgba(255,255,255,0.15) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(255,255,255,0.15) 1px,transparent 1px);
+  background-size:33.33% 33.33%;
+}
+
+/* 顶部信息浮层 */
+.camera-topbar{
+  position:absolute;top:0;left:0;right:0;
+  padding:calc(12px + var(--safe-top)) 16px 12px;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);
+  display:flex;justify-content:space-between;align-items:center;
+  z-index:10;
+}
+.top-info{display:flex;flex-direction:column;gap:2px}
+.top-time{color:#fff;font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:0.02em}
+.top-loc{color:rgba(255,255,255,0.8);font-size:11px;display:flex;align-items:center;gap:4px}
+.top-loc.waiting{color:rgba(255,255,255,0.5)}
+.loc-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-hi);animation:pulse 1.5s infinite}
+.loc-dot.fixed{background:#10b981;animation:none}
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+
+.camera-topbtns{display:flex;gap:8px}
+.top-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);
+  border:none;color:#fff;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all 0.15s;
+}
+.top-btn:active{transform:scale(0.92);background:rgba(255,255,255,0.25)}
+
+/* 底部控制区 */
+.camera-bottombar{
+  background:#000;
+  padding:20px 20px calc(20px + var(--safe-bottom));
+  display:flex;align-items:center;justify-content:space-around;
+  z-index:10;
+}
+.shutter-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+.shutter{
+  width:72px;height:72px;border-radius:50%;
+  background:#fff;border:4px solid #fff;
+  box-shadow:0 0 0 3px rgba(255,255,255,0.3);
+  cursor:pointer;transition:all 0.15s;
+  position:relative;
+}
+.shutter::after{
+  content:'';position:absolute;inset:4px;border-radius:50%;
+  background:#fff;transition:all 0.15s;
+}
+.shutter:active::after{background:#ddd;transform:scale(0.9)}
+.shutter.recording::after{background:var(--accent)}
+
+.bottom-action{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;
+}
+.bottom-action:active{color:#fff}
+.bottom-action .icon-circle{
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(255,255,255,0.1);
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+}
+.bottom-action:active .icon-circle{background:rgba(255,255,255,0.2);transform:scale(0.92)}
+
+/* 闪光动画 */
+.flash{position:absolute;inset:0;background:#fff;z-index:100;opacity:0;pointer-events:none}
+.flash.active{animation:flashAnim 0.4s ease-out}
+@keyframes flashAnim{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+
+/* 权限提示 */
+.permission-prompt{
+  position:absolute;inset:0;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:40px;text-align:center;z-index:50;
+}
+.permission-prompt svg{color:var(--muted)}
+.permission-prompt h3{color:#fff;font-size:18px;font-weight:600}
+.permission-prompt p{color:var(--muted);font-size:13px;line-height:1.6;max-width:280px}
+.permission-btn{
+  padding:12px 32px;background:var(--accent);color:#fff;
+  border:none;border-radius:24px;font-size:15px;font-weight:600;
+  font-family:inherit;cursor:pointer;margin-top:8px;
+}
+
+/* ===== 编辑视图 ===== */
+#editorView{background:var(--bg);z-index:2}
+.editor-header{
+  background:var(--surface);
+  padding:calc(12px + var(--safe-top)) 16px 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow);
+}
+.editor-header h2{font-size:17px;font-weight:600}
+.header-btn{
+  padding:8px 16px;border:none;border-radius:8px;
+  font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;
+  transition:all 0.15s;
+}
+.header-btn.back{background:transparent;color:var(--muted-hi)}
+.header-btn.back:active{color:var(--fg)}
+.header-btn.save{background:var(--accent);color:#fff}
+.header-btn.save:active{background:var(--accent-dark)}
+.header-btn.save:disabled{opacity:0.5}
+
+/* 图片预览区 */
+.preview-area{
+  flex:1;overflow:auto;padding:16px;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+}
+.preview-frame{
+  background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--shadow-md);max-width:100%;
+  position:relative;
+}
+.preview-frame canvas{display:block;max-width:100%;height:auto}
+.preview-loading{
+  position:absolute;inset:0;background:rgba(255,255,255,0.8);
+  display:flex;align-items:center;justify-content:center;
+}
+.spinner{
+  width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 编辑表单 */
+.edit-sheet{
+  background:var(--surface);
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.08);
+  padding:16px 16px calc(20px + var(--safe-bottom));
+  max-height:75vh;overflow-y:auto;
+}
+.sheet-handle{
+  width:36px;height:4px;background:var(--border-hi);
+  border-radius:2px;margin:0 auto 16px;
+}
+.sheet-title{
+  font-size:15px;font-weight:600;color:var(--fg);
+  margin-bottom:16px;display:flex;align-items:center;gap:8px;
+}
+.sheet-title::before{
+  content:'';width:3px;height:16px;background:var(--accent);
+  border-radius:2px;
+}
+
+.field{margin-bottom:14px}
+.field-label{
+  font-size:12px;color:var(--muted-hi);font-weight:500;
+  margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;
+}
+.field-label .auto-tag{
+  font-size:10px;color:var(--accent);background:var(--accent-soft);
+  padding:2px 6px;border-radius:4px;
+}
+.input-row{
+  display:flex;gap:8px;align-items:center;
+}
+input[type="text"],input[type="number"],select,textarea{
+  width:100%;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--fg);
+  outline:none;transition:all 0.15s;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--accent);background:#fff;
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+input[type="text"]{user-select:text;-webkit-user-select:text}
+.btn-inline{
+  padding:10px 14px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:8px;
+  font-family:inherit;font-size:13px;color:var(--fg-2);
+  cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;
+}
+.btn-inline:active{background:var(--surface-3)}
+.btn-inline.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark)}
+
+.field-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* 设备选择 */
+.device-picker{
+  display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;
+  margin:0 -4px;padding:0 4px 4px;
+  scrollbar-width:none;
+}
+.device-picker::-webkit-scrollbar{display:none}
+.device-chip{
+  padding:8px 14px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:20px;
+  font-size:12px;color:var(--muted-hi);white-space:nowrap;
+  cursor:pointer;transition:all 0.15s;
+}
+.device-chip:active{transform:scale(0.95)}
+.device-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+
+/* 开关 */
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-top:1px solid var(--border);
+}
+.switch-row:first-child{border-top:none}
+.switch-label{font-size:14px;color:var(--fg-2)}
+.switch{
+  position:relative;width:44px;height:24px;
+  background:var(--border-hi);border-radius:12px;cursor:pointer;
+  transition:background 0.2s;
+}
+.switch.on{background:var(--accent)}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;
+  width:20px;height:20px;background:#fff;border-radius:50%;
+  transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.switch.on::after{transform:translateX(20px)}
+
+/* Toast */
+.toast{
+  position:fixed;top:calc(60px + var(--safe-top));left:50%;
+  transform:translateX(-50%) translateY(-20px);
+  background:rgba(31,41,55,0.95);backdrop-filter:blur(12px);
+  color:#fff;padding:10px 20px;border-radius:24px;
+  font-size:13px;z-index:1000;opacity:0;
+  transition:all 0.3s;pointer-events:none;
+  box-shadow:var(--shadow-lg);max-width:90%;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.error{background:rgba(239,68,68,0.95)}
+.toast.success{background:rgba(16,185,129,0.95)}
+
+/* 保存遮罩 */
+.save-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(8px);z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+.save-overlay.show{opacity:1;pointer-events:auto}
+.save-card{
+  background:#fff;border-radius:16px;padding:32px 24px;
+  text-align:center;max-width:300px;margin:20px;
+}
+.save-card .check-circle{
+  width:64px;height:64px;border-radius:50%;
+  background:#10b981;margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.save-card h3{font-size:17px;font-weight:600;margin-bottom:8px}
+.save-card p{font-size:13px;color:var(--muted-hi);line-height:1.6;margin-bottom:20px}
+.save-card .save-actions{display:flex;gap:8px}
+.save-card .save-actions button{flex:1}
+
+/* 图标 */
+.icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon-sm{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon-lg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* 桌面适配 */
+@media(min-width:600px){
+  #cameraView .preview-container{max-width:420px;margin:0 auto}
+  .camera-bottombar{max-width:420px;margin:0 auto}
+  .camera-topbar{max-width:420px;margin:0 auto;left:50%;transform:translateX(-50%);right:auto;width:100%}
+  #editorView .preview-area{max-width:480px;margin:0 auto}
+  #editorView .edit-sheet{max-width:480px;margin:0 auto}
+  .editor-header{max-width:480px;margin:0 auto}
+}
+
+</style>
 </head>
 <body>
-<div class="bg-decoration"></div>
-<div id="app" class="relative z-10"></div>
+
+<!-- ===== 相机视图 ===== -->
+<div class="view active" id="cameraView">
+  <div class="preview-container">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="cameraCanvas"></canvas>
+    <div class="grid-overlay" id="gridOverlay" style="display:none;"></div>
+    <div class="flash" id="flash"></div>
+
+    <!-- 顶部信息 -->
+    <div class="camera-topbar">
+      <div class="top-info">
+        <div class="top-time" id="liveTime">--:--</div>
+        <div class="top-loc waiting" id="topLoc">
+          <span class="loc-dot" id="locDot"></span>
+          <span id="locText">正在定位...</span>
+        </div>
+      </div>
+      <div class="camera-topbtns">
+        <button class="top-btn" id="gridBtn" title="网格线">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </button>
+        <button class="top-btn" id="switchCameraBtn" title="切换摄像头">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 权限提示 -->
+    <div class="permission-prompt" id="permissionPrompt">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <h3>需要摄像头权限</h3>
+      <p>请允许使用摄像头和位置权限，以便拍摄带水印的工作照片</p>
+      <button class="permission-btn" id="enableCameraBtn">开启摄像头</button>
+    </div>
+  </div>
+
+  <!-- 底部控制 -->
+  <div class="camera-bottombar">
+    <div class="bottom-action" id="albumBtn">
+      <div class="icon-circle">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <span>相册</span>
+    </div>
+    <div class="shutter-wrap">
+      <button class="shutter" id="shutterBtn"></button>
+    </div>
+    <div class="bottom-action" id="manualUploadBtn">
+      <div class="icon-circle">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <span>上传</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 编辑视图 ===== -->
+<div class="view" id="editorView">
+  <div class="editor-header">
+    <button class="header-btn back" id="editorBackBtn">返回</button>
+    <h2>水印信息</h2>
+    <button class="header-btn save" id="editorSaveBtn">保存</button>
+  </div>
+
+  <div class="preview-area">
+    <div class="preview-frame">
+      <canvas id="resultCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="edit-sheet" id="editSheet">
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-title">拍摄信息</div>
+
+    <div class="field">
+      <div class="field-label">
+        <span>拍摄时间</span>
+        <span class="auto-tag">自动获取</span>
+      </div>
+      <input type="text" id="inputTime" placeholder="2024-01-15 周一 14:30">
+    </div>
+
+    <div class="field">
+      <div class="field-label">
+        <span>拍摄地点</span>
+        <span class="auto-tag" id="locTag">自动获取</span>
+      </div>
+      <input type="text" id="inputLocation" placeholder="请输入地点">
+    </div>
+
+    <div class="field">
+      <div class="field-label">
+        <span>经纬度</span>
+        <button class="btn-inline" id="refreshLocBtn" style="font-size:11px;padding:4px 10px;">
+          <svg class="icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.23"/><path d="M21 3v6h-6"/></svg>
+          重新定位
+        </button>
+      </div>
+      <div class="field-grid-2">
+        <input type="text" id="inputLat" placeholder="纬度">
+        <input type="text" id="inputLng" placeholder="经度">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">
+        <span>拍摄设备</span>
+      </div>
+      <div class="device-picker" id="devicePicker"></div>
+      <input type="text" id="inputDevice" placeholder="或手动输入设备型号" style="margin-top:8px;">
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span>备注信息（选填）</span></div>
+      <input type="text" id="inputNote" placeholder="如：施工现场巡查">
+    </div>
+
+    <div class="sheet-title" style="margin-top:8px;">水印样式</div>
+
+    <div class="switch-row">
+      <span class="switch-label">显示经纬度</span>
+      <div class="switch on" id="switchCoord"></div>
+    </div>
+    <div class="switch-row">
+      <span class="switch-label">显示备注</span>
+      <div class="switch on" id="switchNote"></div>
+    </div>
+    <div class="switch-row">
+      <span class="switch-label">显示项目标识</span>
+      <div class="switch on" id="switchLogo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 保存成功遮罩 -->
+<div class="save-overlay" id="saveOverlay">
+  <div class="save-card">
+    <div class="check-circle">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h3>保存成功</h3>
+    <p id="saveTip">图片已保存到相册<br>如未自动保存，请长按图片保存到手机</p>
+    <div class="save-actions">
+      <button class="header-btn back" id="saveCloseBtn" style="background:var(--surface-2);">继续编辑</button>
+      <button class="header-btn save" id="saveNewBtn">拍摄新照片</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none;">
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+
 <script>
-// ═══════════════════════════════════════════
-// 1. 工具函数与图标系统
-// ═══════════════════════════════════════════
-const Icons = {
-  tool1: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-  tool2: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>',
-  tool4: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
-  tool5: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>',
-  tool7: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>',
-  tool8: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
-  pdf: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h2a1 1 0 0 0 0-2H9v6"/><path d="M15 17v-6h2a1 1 0 1 1 0 2h-2"/></svg>',
-  img: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
-  copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
-  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-  get: (name) => Icons[name] || ''
+/* ============= 全局状态 ============= */
+const state = {
+  stream: null,
+  facingMode: 'environment',
+  capturedImage: null, // Image 对象
+  capturedBlob: null,
+  geo: { lat: '', lng: '', accuracy: 0, address: '' },
+  locationReady: false,
+  device: { brand: '', model: '' },
+  showCoord: true,
+  showNote: true,
+  showLogo: true,
+  currentDeviceChip: '',
 };
 
-const Utils = {
-  _toastTimer: null, _toastEl: null,
-  showToast(msg, isError = false) {
-    if (!this._toastEl) {
-      this._toastEl = Object.assign(document.createElement('div'), { className: 'toast' });
-      this._toastEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span>`;
-      document.body.appendChild(this._toastEl);
-    }
-    this._toastEl.querySelector('span').textContent = msg;
-    this._toastEl.classList.toggle('error', isError);
-    this._toastEl.classList.add('show');
-    clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => this._toastEl.classList.remove('show'), 2500);
-  },
-  copy(text) {
-    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
-    return new Promise((res, rej) => {
-      const ta = Object.assign(document.createElement('textarea'), { value: text, style: 'position:fixed;opacity:0' });
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); res(); } catch (e) { rej(e); }
-      document.body.removeChild(ta);
-    });
-  },
-  downloadBlob(bytes, name, type = 'application/pdf') {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([bytes], { type }));
-    a.download = name; a.click(); URL.revokeObjectURL(a.href);
-  },
-  downloadDataURL(dataUrl, name) {
-    const a = document.createElement('a'); a.href = dataUrl; a.download = name; a.click();
-  },
-  isHeic(f) { const t = f.type.toLowerCase(), n = f.name.toLowerCase(); return t.includes('heic') || t.includes('heif') || n.endsWith('.heic') || n.endsWith('.heif'); },
-  debounce(fn, delay) { let t; return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), delay); }; },
-  formatSize(bytes) { if (bytes < 1024) return bytes + ' B'; if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'; return (bytes / 1048576).toFixed(2) + ' MB'; },
-  formatDate(d) {
-    if (!d) return '';
-    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
-    const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-    return `${y}-${m}-${day} (周${weekDays[d.getDay()]})`;
-  },
-  numberToChinese(num) {
-    const str = String(num).trim(); if (!str || isNaN(num)) return ''; if (parseFloat(str) === 0) return '零元整';
-    const neg = str.startsWith('-'), abs = neg ? str.slice(1) : str;
-    const [rawInt, rawDec = ''] = abs.split('.');
-    const intStr = rawInt.replace(/^0+/, '') || '0', decStr = rawDec.slice(0, 2);
-    if (intStr.length > 16) return '数字超出支持范围';
-    const D = '零壹贰叁肆伍陆柒捌玖', R = ['', '拾', '佰', '仟'], U = ['', '万', '亿', '万亿'];
-    const groups = []; for (let i = intStr.length; i > 0; i -= 4) groups.unshift(intStr.slice(Math.max(0, i - 4), i));
-    let intRes = '', needZero = false;
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i], uIdx = groups.length - 1 - i; let gStr = '', zc = 0, allZero = true;
-      for (let j = 0; j < g.length; j++) {
-        const d = +g[j], rIdx = g.length - 1 - j;
-        if (d === 0) zc++; else { allZero = false; if (zc > 0 || (j === 0 && needZero)) gStr += '零'; gStr += D[d] + R[rIdx]; zc = 0; needZero = false; }
-      }
-      if (!allZero) { intRes += gStr + U[uIdx]; needZero = zc > 0; } else needZero = true;
-    }
-    let decRes = ''; if (decStr) { if (+decStr[0]) decRes += D[+decStr[0]] + '角'; if (decStr[1] && +decStr[1]) decRes += D[+decStr[1]] + '分'; }
-    return (neg ? '负' : '') + (intRes ? intRes + '元' : (decRes ? '零元' : '')) + (decRes || (intRes ? '整' : ''));
-  },
-  convertCase(text, mode) {
-    if (!text) return '';
-    switch(mode) {
-      case 'upper': return text.toUpperCase();
-      case 'lower': return text.toLowerCase();
-      case 'sentence': return text.toLowerCase().replace(/(^\s*\p{L}|[.!?。！？]\s*\p{L})/gu, c => c.toUpperCase());
-      case 'title': return text.toLowerCase().replace(/(?<![\p{L}\p{N}])\p{L}/gu, c => c.toUpperCase());
-      case 'first': return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-      default: return text;
-    }
-  }
+const deviceModels = {
+  apple: ['iPhone 15 Pro Max','iPhone 15 Pro','iPhone 15','iPhone 14 Pro Max','iPhone 14 Pro','iPhone 14','iPhone 13 Pro Max','iPhone 13 Pro','iPhone 13','iPhone 12 Pro','iPhone 12','iPhone 11','iPhone SE'],
+  huawei: ['华为 Mate 60 Pro','华为 Mate 60','华为 Mate 50 Pro','华为 P60 Pro','华为 P60','华为 P50 Pro','华为 nova 11'],
+  xiaomi: ['小米 14 Pro','小米 14','小米 13 Pro','小米 13','Redmi K70','Redmi Note 13'],
+  vivo: ['vivo X100','vivo X90','vivo S18','vivo S17'],
+  oppo: ['OPPO Find X7','OPPO Find X6','OPPO Reno 11'],
+  samsung: ['Samsung S24 Ultra','Samsung S24','Samsung S23 Ultra'],
+  other: ['其他设备'],
 };
 
-// ═══════════════════════════════════════════
-// 2. 状态管理
-// ═══════════════════════════════════════════
-const createStore = (initial) => {
-  let state = structuredClone(initial);
-  return {
-    get: () => structuredClone(state),
-    set: (updater) => { state = typeof updater === 'function' ? updater(structuredClone(state)) : updater; }
-  };
-};
-
-const imageStore = createStore({ files: [], mode: 'fit', orient: 'auto', quality: 0.8 });
-const pdfStore = createStore({ fileName: '', pageCount: 0, mode: 'delete', selected: [] });
-const compressStore = createStore({ file: null, url: '', name: '', origSize: 0, quality: 0.8, format: 'jpeg', scale: 100, resultBlob: null, resultUrl: '', estimates: { jpeg: 0, webp: 0, png: 0 } });
-const textStore = createStore({ input: '', mode: 'upper' });
-const mockStore = createStore({
-  type: 'uuid', count: 10,
-  pwdLen: 12, pwdOpts: { upper: true, lower: true, num: true, sym: true },
-  numMin: 1, numMax: 100, numDec: 2,
-  listText: '', listCount: 1,
-  result: ''
-});
-const dateStore = createStore({
-  mode: 'diff',
-  startDate: '', endDate: '',
-  baseDate: '', offset: 1, unit: 'days',
-  result: null
-});
-const p2iStore = createStore({ mode: 'word', scale: 1.5, format: 'jpeg' });
-
-let sortableInst = null, compressTaskId = 0;
-let currentFile = null, pdfJsDoc = null, pdfObserver = null, pdfArrayBuffer = null;
-
-function resetStore(store, initial) {
-  const oldState = store.get();
-  if (oldState.files) oldState.files.forEach(f => f.url && URL.revokeObjectURL(f.url));
-  if (oldState.url) URL.revokeObjectURL(oldState.url);
-  if (oldState.resultUrl) URL.revokeObjectURL(oldState.resultUrl);
-  store.set(structuredClone(initial));
-  const base = (location.hash.slice(1) || '/').split('?')[0];
-  (ROUTES[base] || renderHome)();
+/* ============= 初始化 ============= */
+function init(){
+  detectDevice();
+  renderDevicePicker();
+  bindEvents();
+  startLiveTime();
+  requestLocation();
 }
 
-function resetPdfStore() {
-  if (pdfObserver) { pdfObserver.disconnect(); pdfObserver = null; }
-  currentFile = null;
-  pdfJsDoc = null;
-  pdfArrayBuffer = null;
-  pdfStore.set({ fileName: '', pageCount: 0, mode: 'delete', selected: [] });
-  renderPdfTool();
-}
+/* ============= 设备检测 ============= */
+function detectDevice(){
+  const ua = navigator.userAgent;
+  let brand = 'other';
+  let model = '';
 
-// ═══════════════════════════════════════════
-// 3. Web组件
-// ═══════════════════════════════════════════
-class DropZone extends HTMLElement {
-  connectedCallback() {
-    if (this._init) return; this._init = true;
-    const text = this.getAttribute('text') || '点击或拖拽文件到此处', hint = this.getAttribute('hint') || '';
-    const accept = this.getAttribute('accept') || '*/*', multi = this.hasAttribute('multiple') ? 'multiple' : '';
-    this.classList.add('drop-zone');
-    this.innerHTML = `<input type="file" class="hidden" ${multi} accept="${accept}"><div class="drop-zone-inner"><div class="tool-icon mx-auto" style="width:52px;height:52px">${Icons.tool4}</div><p class="font-medium text-[--ink] mb-1 text-base">${text}</p><p class="text-xs text-[--muted]">${hint}</p></div>`;
-    const input = this.querySelector('input');
-    this.addEventListener('click', () => input.click());
-    this.addEventListener('dragover', e => { e.preventDefault(); this.classList.add('dragover'); });
-    this.addEventListener('dragleave', e => { e.preventDefault(); this.classList.remove('dragover'); });
-    this.addEventListener('drop', e => { e.preventDefault(); this.classList.remove('dragover'); if (e.dataTransfer.files.length) this.dispatchEvent(new CustomEvent('files-selected', { detail: e.dataTransfer.files, bubbles: true })); });
-    input.addEventListener('change', e => { if (e.target.files.length) this.dispatchEvent(new CustomEvent('files-selected', { detail: e.target.files, bubbles: true })); });
+  if(/iPhone|iPad|iPod/i.test(ua)){
+    brand = 'apple';
+    // 通过屏幕分辨率推断
+    const w = screen.width * (window.devicePixelRatio || 1);
+    const h = screen.height * (window.devicePixelRatio || 1);
+    const res = `${Math.max(w,h)}x${Math.min(w,h)}`;
+    const appleMap = {
+      '2796x1290':'iPhone 15 Pro Max', '2778x1284':'iPhone 14 Pro Max',
+      '2532x1170':'iPhone 15 Pro', '2796x1290':'iPhone 14 Pro Max',
+    };
+    model = appleMap[res] || 'iPhone';
+  } else if(/Android/i.test(ua)){
+    if(/Huawei|HONOR/i.test(ua)) brand = 'huawei';
+    else if(/Xiaomi|Redmi/i.test(ua)) brand = 'xiaomi';
+    else if(/vivo/i.test(ua)) brand = 'vivo';
+    else if(/OPPO|oppo/i.test(ua)) brand = 'oppo';
+    else if(/Samsung/i.test(ua)) brand = 'samsung';
+    // 尝试提取型号
+    const m = ua.match(/;\s*([a-zA-Z0-9\-_]+)\s*Build/);
+    if(m) model = m[1];
   }
-}
-customElements.define('drop-zone', DropZone);
-
-// ═══════════════════════════════════════════
-// 4. 配置 (按拼音首字母排序)
-// ═══════════════════════════════════════════
-const TOOLS = [
-  { id: 'text-case', name: '大小写转换', desc: '一键转换英文大小写，支持句首、词首等5种模式。', icon: 'tool5' },
-  { id: 'pdf-split-merge', name: 'PDF 可视化工作台', desc: '上传 PDF 可视化选择删除或保留页面，缩略图懒加载，本地处理。', icon: 'pdf' },
-  { id: 'pdf-to-image', name: 'PDF 转图片', desc: '将 PDF 每页转为高清图片，支持打包 ZIP 或直接嵌入 Word。', icon: 'img' },
-  { id: 'date-calculator', name: '日期计算器', desc: '计算日期差值、工作日天数，或推算合同到期日。', icon: 'tool8' },
-  { id: 'number-to-chinese', name: '数字转中文大写', desc: '输入阿拉伯数字，自动转换为人民币大写金额格式。', icon: 'tool1' },
-  { id: 'mock-generator', name: '随机数据生成', desc: '批量生成UUID、随机密码、测试数据或幸运抽签。', icon: 'tool7' },
-  { id: 'image-compress', name: '图片压缩', desc: '智能压缩图片体积，支持格式转换与多格式预估。', icon: 'tool4' },
-  { id: 'image-to-pdf', name: '图片转 PDF', desc: '将多张图片合并为单个 PDF 文件，支持排序与压缩。', icon: 'tool2' }
-];
-const IMG_OPTS = { mode: [{ v: 'fit', l: '贴合图片', s: '无白边' }, { v: 'a4', l: 'A4 标准页', s: '带白边' }], orient: [{ v: 'auto', l: '自动' }, { v: 'portrait', l: '纵向' }, { v: 'landscape', l: '横向' }], quality: [{ v: '1', l: '原图' }, { v: '0.8', l: '平衡' }, { v: '0.5', l: '极限' }] };
-const CASE_OPTS = [{ v: 'upper', l: '全部大写' }, { v: 'lower', l: '全部小写' }, { v: 'sentence', l: '句首大写' }, { v: 'title', l: '词首大写' }, { v: 'first', l: '仅首字母大写' }];
-
-// ═══════════════════════════════════════════
-// 5. 渲染辅助函数
-// ═══════════════════════════════════════════
-const app = document.getElementById('app');
-const $header = (title, num) => `<header class="max-w-5xl mx-auto px-6 py-8 flex items-center gap-4 page-enter"><button class="btn btn-ghost btn-sm" data-action="home" aria-label="返回首页"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> 返回</button><div><div class="tool-num">${num}</div><h1 class="text-2xl font-bold text-[--ink]">${title}</h1></div></header>`;
-const $optGroup = (key, cur) => IMG_OPTS[key].map(o => `<div class="orient-option ${String(cur) === o.v ? 'active' : ''}" data-${key}="${o.v}" role="button" tabindex="0">${o.l}${o.s ? `<br><span class="text-xs opacity-70">${o.s}</span>` : ''}</div>`).join('');
-const $toolCard = (t, i) => `<a href="#/${t.id}" class="tool-card page-enter" style="animation-delay:${i * 0.05}s"><div class="tool-icon">${Icons.get(t.icon)}</div><div class="flex items-center justify-between mb-3"><h3 class="text-xl font-semibold text-[--ink]">${t.name}</h3><span class="tool-num">${String(i + 1).padStart(2, '0')}</span></div><p class="text-sm text-[--ink-soft] leading-relaxed mb-6">${t.desc}</p><div class="flex items-center gap-2 text-xs text-[--green] font-medium"><span>进入工具</span><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></a>`;
-const $infoCard = (title, items) => `<div class="info-card mt-12"><h4 class="text-sm font-semibold text-[--green] mb-3 flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7 4V7.5M7 9.5V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>${title}</h4><ul class="text-xs text-[--ink-soft] space-y-1.5 leading-relaxed">${items.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
-
-// ═══════════════════════════════════════════
-// 6. 页面渲染器
-// ═══════════════════════════════════════════
-function renderHome() {
-  app.innerHTML = `<main class="max-w-6xl mx-auto px-6 py-16"><div class="text-center mb-12 page-enter"><h1 class="text-5xl font-bold mb-4" style="background:linear-gradient(135deg,var(--green) 0%,var(--green-2) 50%,var(--accent) 100%);-webkit-background-clip:text;color:transparent">效率工具集</h1><p class="text-[--ink-soft] text-lg mb-8">简洁、纯粹、专注的本地化工具，解决日常办公需求。</p><div class="flex gap-8 justify-center text-sm text-[--ink-soft]"><div><span class="font-bold text-[--green] text-xl">${TOOLS.length}</span> 个实用工具</div><div><span class="font-bold text-[--green] text-xl">100%</span> 本地运行</div><div><span class="font-bold text-[--green] text-xl">0</span> 数据上传</div></div></div><div id="tools-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${TOOLS.map($toolCard).join('')}</div></main>`;
+  state.device = { brand, model };
 }
 
-// Tool 01: 大小写转换
-function renderTextCaseTool() {
-  const S = textStore.get();
-  app.innerHTML = `${$header('大小写转换', 'Tool 01')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter"><div class="flex flex-wrap gap-3 mb-6 justify-center">${CASE_OPTS.map(o => `<button class="btn ${S.mode === o.v ? 'btn-primary' : 'btn-ghost'}" data-case-mode="${o.v}">${o.l}</button>`).join('')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">输入文本</label><textarea id="tc-input" class="textarea" placeholder="在此输入或粘贴文本...">${S.input}</textarea></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">转换结果</label><textarea id="tc-output" class="textarea bg-[--green-light] text-[--green]" readonly></textarea></div></div><div class="flex gap-3 mt-6 justify-center"><button class="btn btn-primary" id="tc-copy-btn">复制结果</button><button class="btn btn-ghost" id="reset-text">重置</button></div><div class="grid grid-cols-3 gap-4 mt-8 max-w-md mx-auto"><div class="stat-box"><div class="val" id="tc-chars">0</div><div class="lbl">字符数</div></div><div class="stat-box"><div class="val" id="tc-words">0</div><div class="lbl">单词数</div></div><div class="stat-box"><div class="val" id="tc-lines">0</div><div class="lbl">行数</div></div></div>${$infoCard('使用说明', ['全部大写/小写：转换所有英文字母', '句首大写：每句话的第一个字母大写', '词首大写：每个单词的首字母大写', '仅首字母大写：整个文本的第一个字母大写，其余小写'])}</main>`;
-  doTextCase();
-}
-
-// Tool 02: PDF 可视化工作台
-function renderPdfTool() {
-  const S = pdfStore.get();
-  const hasFile = !!currentFile;
-  app.innerHTML = `${$header('PDF 可视化工作台', 'Tool 02')}<main class="max-w-6xl mx-auto px-6 pb-16 page-enter">
-    <div id="upload-section" class="${hasFile ? 'hidden' : ''}">
-      <drop-zone id="pdf-drop" text="点击或拖拽 PDF 文件到此处" hint="支持 .pdf 格式，本地处理不上传" accept=".pdf"></drop-zone>
-    </div>
-    <div id="workspace" class="${hasFile ? '' : 'hidden'} space-y-6">
-      <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-[--border]">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-[--bg-2] rounded flex items-center justify-center text-[--muted]">${Icons.pdf}</div>
-          <div>
-            <div class="font-medium text-[--ink] text-sm truncate max-w-xs">${S.fileName}</div>
-            <div class="text-xs text-[--muted]" id="pdf-stats">共 ${S.pageCount} 页 · 已选 ${S.selected.length} 页</div>
-          </div>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="btn-reset">重新选择</button>
-      </div>
-      <div class="bg-white p-6 rounded-2xl border border-[--border] space-y-6">
-        <div>
-          <label class="block text-sm font-medium text-[--ink-soft] mb-3">操作模式</label>
-          <div class="flex gap-4 flex-wrap">
-            <div class="orient-option ${S.mode === 'delete' ? 'active' : ''}" data-mode="delete" role="button" tabindex="0">
-              <div class="font-bold mb-1">删除选中页</div>
-              <div class="text-xs opacity-80">点击页面标记为废弃 (红色遮罩)</div>
-            </div>
-            <div class="orient-option ${S.mode === 'extract' ? 'active' : ''}" data-mode="extract" role="button" tabindex="0">
-              <div class="font-bold mb-1">仅保留选中页</div>
-              <div class="text-xs opacity-80">点击页面标记为保留 (绿色打勾)</div>
-            </div>
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-3 items-center justify-between border-t border-[--border] pt-6">
-          <div class="flex gap-2">
-            <button class="btn btn-ghost btn-sm" id="btn-select-all">全选</button>
-            <button class="btn btn-ghost btn-sm" id="btn-invert">反选</button>
-            <button class="btn btn-ghost btn-sm" id="btn-clear">清空</button>
-          </div>
-          <button class="btn btn-primary px-8" id="btn-process">处理并下载 PDF</button>
-        </div>
-      </div>
-      <div id="thumb-grid" class="thumb-grid ${S.mode === 'delete' ? 'mode-delete' : ''}"></div>
-    </div>
-    ${$infoCard('交互指南', ['上传 PDF 后，系统会自动生成所有页面的缩略图（采用懒加载技术，百页文件也不卡顿）。', '<b>删除模式</b>：点击你想删掉的页面，它们会变红并打上 ✕，最后下载的文件将剔除这些页。', '<b>保留模式</b>：点击你想保留的页面，它们会变绿并打上 ✓，最后下载的文件只包含这些页。', '支持按住 Ctrl/Cmd 键进行多选，或使用顶部的“全选/反选”快捷按钮。'])}
-  </main>`;
-  if (hasFile) initThumbnails();
-}
-
-// Tool 03: PDF 转图片
-function renderPdfToImageTool() {
-  const S = p2iStore.get();
-  app.innerHTML = `${$header('PDF 转图片', 'Tool 03')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
-    <drop-zone id="p2i-drop" text="点击或拖拽 PDF 文件到此处" hint="支持 .pdf 格式，转换后的图片清晰度高" accept=".pdf"></drop-zone>
-    
-    <div class="mt-8 bg-white p-6 rounded-2xl border border-[--border] space-y-6">
-      <div>
-        <label class="block text-sm font-medium text-[--ink-soft] mb-3">输出模式</label>
-        <div class="flex gap-4 flex-wrap">
-          <div class="orient-option ${S.mode === 'word' ? 'active' : ''}" data-p2i-mode="word" role="button" tabindex="0">
-            <div class="font-bold mb-1">嵌入 Word 文档</div>
-            <div class="text-xs opacity-80">每页 PDF 对应一页 Word，生成 .doc 文件</div>
-          </div>
-          <div class="orient-option ${S.mode === 'zip' ? 'active' : ''}" data-p2i-mode="zip" role="button" tabindex="0">
-            <div class="font-bold mb-1">打包 ZIP 压缩包</div>
-            <div class="text-xs opacity-80">每页 PDF 转为单独的图片文件，打包下载</div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="flex flex-wrap gap-3 items-center justify-between border-t border-[--border] pt-6">
-        <div class="flex gap-3 items-center">
-          <label class="text-sm text-[--ink-soft]">清晰度:</label>
-          <select id="p2i-scale" class="input w-32 py-2">
-            <option value="1" ${S.scale === 1 ? 'selected' : ''}>标准 (72 DPI)</option>
-            <option value="1.5" ${S.scale === 1.5 ? 'selected' : ''}>高清 (108 DPI)</option>
-            <option value="2" ${S.scale === 2 ? 'selected' : ''}>超清 (144 DPI)</option>
-            <option value="3" ${S.scale === 3 ? 'selected' : ''}>极清 (216 DPI)</option>
-          </select>
-        </div>
-        <div class="flex gap-3 items-center ${S.mode === 'zip' ? '' : 'hidden'}" id="p2i-format-wrap">
-          <label class="text-sm text-[--ink-soft]">图片格式:</label>
-          <select id="p2i-format" class="input w-32 py-2">
-            <option value="jpeg" ${S.format === 'jpeg' ? 'selected' : ''}>JPEG (体积小)</option>
-            <option value="png" ${S.format === 'png' ? 'selected' : ''}>PNG (无损)</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div id="p2i-status" class="hidden mt-6 bg-white p-6 rounded-2xl border border-[--border] text-center">
-      <div class="text-lg font-semibold text-[--ink] mb-2" id="p2i-status-title">准备转换</div>
-      <div class="text-sm text-[--muted] mb-4" id="p2i-status-detail">请上传 PDF 文件</div>
-      <div class="w-full bg-[--bg-2] rounded-full h-2 overflow-hidden" id="p2i-progress-bar-bg">
-        <div class="bg-[--green] h-2 rounded-full transition-all duration-300" id="p2i-progress-bar" style="width: 0%"></div>
-      </div>
-    </div>
-
-    ${$infoCard('使用说明', [
-      '<b>嵌入 Word</b>：将 PDF 每页转为图片，嵌入 Word 并分页，生成 .doc 文件，排版绝对不会乱。',
-      '<b>打包 ZIP</b>：将 PDF 每页转为独立图片，打包成 .zip 压缩包下载。',
-      '建议选择“高清”或“超清”以保证文字清晰度。极清模式可能会导致内存占用过高。',
-      '所有转换均在本地浏览器完成，不上传服务器，安全私密。'
-    ])}
-  </main>`;
-
-  const fmtWrap = app.querySelector('#p2i-format-wrap');
-  if (S.mode === 'word') fmtWrap.classList.add('hidden');
-  else fmtWrap.classList.remove('hidden');
-}
-
-// Tool 04: 日期计算器
-function renderDateTool() {
-  const S = dateStore.get();
-  const today = new Date().toISOString().split('T')[0];
-  app.innerHTML = `${$header('日期计算器', 'Tool 04')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
-    <div class="flex gap-4 mb-8 justify-center">
-      <button class="btn ${S.mode==='diff'?'btn-primary':'btn-ghost'}" data-date-mode="diff">计算日期差 (间隔)</button>
-      <button class="btn ${S.mode==='calc'?'btn-primary':'btn-ghost'}" data-date-mode="calc">推算日期 (加减)</button>
-    </div>
-    <div id="date-diff-view" class="${S.mode!=='diff'?'hidden':''}">
-      <div class="bg-white p-8 rounded-2xl border border-[--border] space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">开始日期</label><input type="date" id="date-start" class="input" value="${S.startDate || today}"></div>
-          <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">结束日期</label><input type="date" id="date-end" class="input" value="${S.endDate || today}"></div>
-        </div>
-        <button class="btn btn-primary w-full" id="date-calc-diff-btn">计算间隔</button>
-        <div id="date-diff-result" class="hidden mt-6"></div>
-      </div>
-    </div>
-    <div id="date-calc-view" class="${S.mode!=='calc'?'hidden':''}">
-      <div class="bg-white p-8 rounded-2xl border border-[--border] space-y-6">
-        <div><label class="block text-sm font-medium text-[--ink-soft] mb-2">基准日期</label><input type="date" id="date-base" class="input" value="${S.baseDate || today}"></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-sm font-medium text-[--ink-soft] mb-2">增加/减少</label>
-            <input type="number" id="date-offset" class="input" value="${S.offset}">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-[--ink-soft] mb-2">时间单位</label>
-            <select id="date-unit" class="input">
-              <option value="days" ${S.unit==='days'?'selected':''}>天</option>
-              <option value="weeks" ${S.unit==='weeks'?'selected':''}>周</option>
-              <option value="months" ${S.unit==='months'?'selected':''}>月</option>
-              <option value="years" ${S.unit==='years'?'selected':''}>年</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn btn-primary w-full" id="date-calc-offset-btn">推算日期</button>
-        <div id="date-calc-result" class="hidden mt-6"></div>
-      </div>
-    </div>
-    <div class="flex gap-3 mt-8 justify-center"><button class="btn btn-ghost" id="reset-date">重置工具</button></div>
-    ${$infoCard('办公场景', ['HR：计算员工入职天数、年假剩余、合同到期日', '法务/行政：计算租房到期日、执照有效期', '财务：计算账期、利息天数、发票到期日', '注意：月份加减已自动处理"月末溢出"问题（如1月31日加1个月为2月28日）'])}
-  </main>`;
-  if (S.result && S.mode === 'diff') renderDateDiffResult(S.result);
-  if (S.result && S.mode === 'calc') renderDateCalcResult(S.result);
-}
-
-// Tool 05: 数字转中文大写
-function renderNumberTool() {
-  app.innerHTML = `${$header('数字转中文大写', 'Tool 05')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter">
-    <div class="bg-white p-8 rounded-2xl border border-[--border]">
-      <div class="mb-6">
-        <label class="block text-sm font-medium text-[--ink-soft] mb-2">输入数字</label>
-        <div class="relative">
-          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[--muted] text-xl">¥</span>
-          <input type="text" id="num-input" class="input pl-10 text-xl" placeholder="请输入金额" value="">
-        </div>
-      </div>
-      <div class="mb-6">
-        <label class="block text-sm font-medium text-[--ink-soft] mb-2">中文大写结果</label>
-        <div id="num-output" class="result-box" title="点击复制结果">
-          <span class="text-[--muted] text-base font-sans font-normal">结果将显示在这里</span>
-          <div class="copy-icon">${Icons.copy}</div>
-        </div>
-      </div>
-      <div class="flex justify-center">
-        <button class="btn btn-ghost" id="reset-number">重置</button>
-      </div>
-    </div>
-    ${$infoCard('使用说明', ['支持整数、小数（最多两位）、负数', '最大支持16位整数'])}
-  </main>`;
-}
-
-// Tool 06: 随机数据生成
-function renderMockTool() {
-  const S = mockStore.get();
-  app.innerHTML = `${$header('随机数据生成', 'Tool 06')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter">
-    <div class="flex gap-2 mb-8 justify-center flex-wrap">
-      <button class="btn ${S.type==='uuid'?'btn-primary':'btn-ghost'}" data-mock-type="uuid">UUID 序列</button>
-      <button class="btn ${S.type==='password'?'btn-primary':'btn-ghost'}" data-mock-type="password">随机密码</button>
-      <button class="btn ${S.type==='number'?'btn-primary':'btn-ghost'}" data-mock-type="number">随机数字/金额</button>
-      <button class="btn ${S.type==='picker'?'btn-primary':'btn-ghost'}" data-mock-type="picker">幸运抽签/抽取</button>
-    </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div class="bg-white p-6 rounded-2xl border border-[--border]">
-        <h3 class="text-lg font-semibold mb-4 text-[--ink]">生成设置</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-[--ink-soft] mb-2">生成数量</label>
-            <input type="number" id="mock-count" class="input" value="${S.count}" min="1" max="1000">
-          </div>
-          <div id="mock-opts-pwd" class="${S.type!=='password'?'hidden':''} space-y-3">
-            <label class="block text-sm font-medium text-[--ink-soft]">密码长度: ${S.pwdLen}</label>
-            <input type="range" class="range-slider" id="mock-pwd-len" min="4" max="32" value="${S.pwdLen}">
-            <div class="grid grid-cols-2 gap-2 text-sm">
-              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-upper" ${S.pwdOpts.upper?'checked':''}> 大写字母</label>
-              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-lower" ${S.pwdOpts.lower?'checked':''}> 小写字母</label>
-              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-num" ${S.pwdOpts.num?'checked':''}> 数字</label>
-              <label class="flex items-center gap-2"><input type="checkbox" id="pwd-sym" ${S.pwdOpts.sym?'checked':''}> 特殊符号</label>
-            </div>
-          </div>
-          <div id="mock-opts-num" class="${S.type!=='number'?'hidden':''} grid grid-cols-3 gap-3">
-            <div><label class="text-xs text-[--muted]">最小值</label><input type="number" id="mock-num-min" class="input" value="${S.numMin}"></div>
-            <div><label class="text-xs text-[--muted]">最大值</label><input type="number" id="mock-num-max" class="input" value="${S.numMax}"></div>
-            <div><label class="text-xs text-[--muted]">小数位数</label><input type="number" id="mock-num-dec" class="input" value="${S.numDec}" min="0" max="6"></div>
-          </div>
-          <div id="mock-opts-picker" class="${S.type!=='picker'?'hidden':''}">
-            <label class="block text-sm font-medium text-[--ink-soft] mb-2">候选名单 (每行一个)</label>
-            <textarea id="mock-list" class="textarea" placeholder="张三&#10;李四&#10;王五">${S.listText}</textarea>
-          </div>
-          <button class="btn btn-primary w-full mt-4" id="mock-gen-btn">立即生成</button>
-        </div>
-      </div>
-      <div class="bg-white p-6 rounded-2xl border border-[--border] flex flex-col">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-[--ink]">生成结果</h3>
-          <div class="flex gap-2">
-            <button class="btn btn-sm btn-ghost" id="mock-copy-btn">复制全部</button>
-            <button class="btn btn-sm btn-ghost" id="mock-clear-btn">清空</button>
-          </div>
-        </div>
-        <div id="mock-result" class="mock-result flex-1">${S.result || '点击"立即生成"查看结果...'}</div>
-      </div>
-    </div>
-    <div class="flex gap-3 mt-8 justify-center"><button class="btn btn-ghost" id="reset-mock">重置工具</button></div>
-    ${$infoCard('使用场景', ['UUID：生成系统测试用的唯一订单号、用户ID', '密码：生成高强度的随机初始密码', '数字：生成财务/销售测试用的随机金额', '抽签：从名单中随机抽取幸运儿或分配任务'])}
-  </main>`;
-}
-
-// Tool 07: 图片压缩
-function renderCompressTool() {
-  const S = compressStore.get();
-  app.innerHTML = `${$header('图片压缩', 'Tool 07')}<main class="max-w-5xl mx-auto px-6 pb-16 page-enter"><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div><drop-zone id="comp-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP" accept="image/*"></drop-zone><div id="comp-ctrl" class="hidden mt-6 space-y-6"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">选择格式 (智能预估)</label><div class="grid grid-cols-3 gap-3" id="format-cards"></div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">质量: <span id="comp-q-val">${Math.round(S.quality * 100)}</span>%</label><input type="range" class="range-slider" id="comp-q" min="10" max="100" value="${S.quality * 100}"></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-2">缩放比例: <span id="comp-s-val">${S.scale}</span>%</label><input type="range" class="range-slider" id="comp-s" min="10" max="100" value="${S.scale}"></div></div></div><div><div class="grid grid-cols-2 gap-4 mb-6"><div class="stat-box"><div class="val" id="comp-orig-size">-</div><div class="lbl">原始大小</div></div><div class="stat-box"><div class="val text-[--accent]" id="comp-new-size">-</div><div class="lbl">压缩后大小</div></div></div><div class="bg-white rounded-xl border border-[--border] p-4 flex items-center justify-center min-h-[300px]"><img id="comp-preview" class="max-w-full max-h-[400px] rounded-lg hidden" alt="preview"><span id="comp-placeholder" class="text-[--muted]">上传图片后预览</span></div><div class="flex gap-3 mt-6"><button class="btn btn-primary flex-1" id="comp-dl-btn" disabled>下载压缩图片</button><button class="btn btn-ghost" id="reset-compress">重置</button></div></div></div>${$infoCard('使用说明', ['所有压缩处理均在本地浏览器完成，不上传服务器', '上传图片后会自动计算各格式预估大小', '点击格式卡片即可切换，WebP 通常体积最小'])}</main>`;
-  renderFormatCards();
-}
-
-// Tool 08: 图片转 PDF
-function renderImageTool() {
-  const S = imageStore.get();
-  app.innerHTML = `${$header('图片转 PDF', 'Tool 08')}<main class="max-w-4xl mx-auto px-6 pb-16 page-enter"><drop-zone id="img-drop" text="点击或拖拽图片到此处" hint="支持 JPG, PNG, WEBP, HEIC" accept="image/*,.heic,.heif" multiple></drop-zone><div id="img-section" class="hidden mt-8"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-semibold text-[--ink]">已选图片 <span id="img-count" class="text-[--muted] font-normal text-sm"></span></h3><button class="btn btn-ghost btn-sm" id="reset-image">重置</button></div><div id="img-list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4"></div></div><div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面模式</label><div class="flex gap-3 flex-wrap">${$optGroup('mode', S.mode)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">页面方向</label><div class="flex gap-3 flex-wrap">${$optGroup('orient', S.orient)}</div></div><div><label class="block text-sm font-medium text-[--ink-soft] mb-3">压缩等级</label><div class="flex gap-3 flex-wrap">${$optGroup('quality', S.quality)}</div></div></div><div class="mt-10 text-center"><button class="btn btn-primary text-lg px-12 py-4" id="convert-img-btn">生成并下载 PDF</button></div>${$infoCard('使用说明', ['所有图片处理均在本地完成', 'HEIC/HEIF 格式将自动转换为 JPEG', '拖拽排序：长按缩略图拖动调整顺序'])}</main>`;
-  syncImageListDOM();
-  const list = app.querySelector('#img-list');
-  if (sortableInst) sortableInst.destroy();
-  if (list) {
-    sortableInst = Sortable.create(list, {
-      animation: 150,
-      ghostClass: 'dragging',
-      onEnd: e => {
-        const files = imageStore.get().files;
-        const movedItem = files.splice(e.oldIndex, 1)[0];
-        files.splice(e.newIndex, 0, movedItem);
-        imageStore.set(s => ({ ...s, files }));
-      }
+function renderDevicePicker(){
+  const picker = document.getElementById('devicePicker');
+  const brands = ['apple','huawei','xiaomi','vivo','oppo','samsung'];
+  let html = '';
+  brands.forEach(b => {
+    deviceModels[b].forEach(m => {
+      html += `<div class="device-chip" data-device="${m}">${m}</div>`;
     });
-  }
-}
-
-function renderFormatCards() {
-  const S = compressStore.get();
-  const container = app.querySelector('#format-cards');
-  if (!container) return;
-  const formats = ['jpeg', 'webp', 'png'];
-  container.innerHTML = formats.map(f => {
-    const size = S.estimates[f];
-    const isActive = S.format === f;
-    return `<div class="format-card p-4 border border-[--border] rounded-xl text-center ${isActive ? 'active' : ''}" data-cfmt="${f}"><div class="font-bold text-[--ink] uppercase">${f}</div><div class="text-sm text-[--muted] mt-1">${size ? Utils.formatSize(size) : '计算中...'}</div></div>`;
-  }).join('');
-}
-
-function syncImageListDOM() {
-  const files = imageStore.get().files;
-  const list = app.querySelector('#img-list');
-  const sec = app.querySelector('#img-section');
-  if (!list || !sec) return;
-  if (!files.length) { sec.classList.add('hidden'); list.innerHTML = ''; return; }
-  sec.classList.remove('hidden');
-  app.querySelector('#img-count').textContent = `(${files.length} 张)`;
-  list.innerHTML = files.map((f, i) => `<div class="thumb" data-idx="${i}"><img src="${f.url}" alt="${f.name}"><span class="thumb-num">${i + 1}</span><span class="thumb-orient">${f.w > f.h ? '横' : '竖'}</span><button class="thumb-remove" data-rm-img="${i}"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>`).join('');
-}
-
-function renderDateDiffResult(res) {
-  const el = app.querySelector('#date-diff-result');
-  if (!el) return;
-  el.classList.remove('hidden');
-  const parts = [];
-  if (res.years > 0) parts.push(`${res.years} 年`);
-  if (res.months > 0) parts.push(`${res.months} 个月`);
-  if (res.days > 0 || parts.length === 0) parts.push(`${res.days} 天`);
-  const durationStr = parts.join(' ');
-  
-  el.innerHTML = `
-    <div class="date-result-card">
-      <div class="big-num">${res.totalDays}</div>
-      <div class="big-lbl">总计相差天数</div>
-      <div class="grid grid-cols-2 gap-4 mt-6 text-left">
-        <div class="stat-box"><div class="val">${res.workDays}</div><div class="lbl">实际工作日</div></div>
-        <div class="stat-box"><div class="val">${res.weekendDays}</div><div class="lbl">周末天数</div></div>
-      </div>
-      <div class="mt-4 text-sm text-[--ink-soft]">相当于 ${durationStr}</div>
-    </div>
-  `;
-}
-
-function renderDateCalcResult(res) {
-  const el = app.querySelector('#date-calc-result');
-  if (!el) return;
-  el.classList.remove('hidden');
-  el.innerHTML = `
-    <div class="date-result-card">
-      <div class="text-sm text-[--muted] mb-2">推算结果日期</div>
-      <div class="big-num" style="font-size:32px">${res.dateStr}</div>
-      <div class="mt-4 text-sm text-[--ink-soft]">
-        ${res.offset > 0 ? '增加' : '减少'} ${Math.abs(res.offset)} ${res.unitName}
-        ${res.isWorkday ? '' : '<span class="text-[--accent] ml-2">(注意：该日为周末)</span>'}
-      </div>
-    </div>
-  `;
-}
-
-// ═══════════════════════════════════════════
-// 7. 业务逻辑
-// ═══════════════════════════════════════════
-// PDF 可视化工作台 - 缩略图渲染与懒加载
-async function initThumbnails() {
-  const grid = document.getElementById('thumb-grid');
-  if (!grid || !pdfJsDoc) return;
-  grid.innerHTML = '';
-  if (pdfObserver) pdfObserver.disconnect();
-  const fragment = document.createDocumentFragment();
-  const S = pdfStore.get();
-  for (let i = 1; i <= S.pageCount; i++) {
-    const div = document.createElement('div');
-    div.className = `pdf-thumb ${S.selected.includes(i) ? 'selected' : ''}`;
-    div.dataset.page = i;
-    div.innerHTML = `
-      <div class="thumb-canvas-wrapper">
-        <canvas class="thumb-canvas"></canvas>
-        <div class="thumb-loading">渲染中...</div>
-      </div>
-      <div class="thumb-label">第 ${i} 页</div>
-      <div class="thumb-check">${Icons.check}</div>
-    `;
-    div.addEventListener('click', () => toggleSelect(i));
-    fragment.appendChild(div);
-  }
-  grid.appendChild(fragment);
-  pdfObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const pageNum = parseInt(entry.target.dataset.page);
-        renderThumbCanvas(entry.target, pageNum);
-        pdfObserver.unobserve(entry.target);
-      }
-    });
-  }, { rootMargin: '300px' });
-  grid.querySelectorAll('.pdf-thumb').forEach(el => pdfObserver.observe(el));
-}
-
-async function renderThumbCanvas(thumbEl, pageNum) {
-  const canvas = thumbEl.querySelector('.thumb-canvas');
-  const loading = thumbEl.querySelector('.thumb-loading');
-  try {
-    const page = await pdfJsDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale: 0.4 });
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    loading.style.display = 'none';
-  } catch (e) {
-    loading.textContent = '渲染失败';
-    loading.style.color = 'var(--accent)';
-  }
-}
-
-function toggleSelect(pageNum) {
-  pdfStore.set(s => {
-    const idx = s.selected.indexOf(pageNum);
-    if (idx > -1) s.selected.splice(idx, 1);
-    else s.selected.push(pageNum);
-    return { ...s, selected: s.selected };
   });
-  updateThumbUI();
-}
+  picker.innerHTML = html;
 
-function updateThumbUI() {
-  const S = pdfStore.get();
-  document.querySelectorAll('.pdf-thumb').forEach(el => {
-    const p = parseInt(el.dataset.page);
-    el.classList.toggle('selected', S.selected.includes(p));
-  });
-  const statsEl = document.getElementById('pdf-stats');
-  if (statsEl) statsEl.textContent = `共 ${S.pageCount} 页 · 已选 ${S.selected.length} 页`;
-}
-
-async function processPdf() {
-  const S = pdfStore.get();
-  if (!currentFile) return;
-  if (S.mode === 'extract' && S.selected.length === 0) return Utils.showToast('提取模式下，请至少选择一页保留', true);
-  if (S.mode === 'delete' && S.selected.length === S.pageCount) return Utils.showToast('删除模式下，不能删除所有页面', true);
-  const btn = document.getElementById('btn-process');
-  btn.setAttribute('disabled', '');
-  btn.innerHTML = '<div class="spinner"></div> 处理中...';
-  try {
-    const pdfDoc = await PDFLib.PDFDocument.load(pdfArrayBuffer);
-    const newDoc = await PDFLib.PDFDocument.create();
-    let pagesToKeep = [];
-    if (S.mode === 'delete') {
-      const removeSet = new Set(S.selected);
-      for (let i = 1; i <= S.pageCount; i++) if (!removeSet.has(i)) pagesToKeep.push(i - 1);
-    } else {
-      pagesToKeep = S.selected.map(p => p - 1).sort((a, b) => a - b);
-    }
-    if (pagesToKeep.length === 0) throw new Error('没有保留任何页面');
-    const copiedPages = await newDoc.copyPages(pdfDoc, pagesToKeep);
-    copiedPages.forEach(p => newDoc.addPage(p));
-    const bytes = await newDoc.save();
-    const prefix = S.mode === 'delete' ? 'deleted_' : 'extracted_';
-    Utils.downloadBlob(bytes, `${prefix}${S.fileName}`);
-    Utils.showToast('处理完成！');
-  } catch (e) {
-    Utils.showToast('处理失败: ' + e.message, true);
-  } finally {
-    btn.removeAttribute('disabled');
-    btn.innerHTML = '处理并下载 PDF';
-  }
-}
-
-// PDF 转图片
-async function convertPdfToImages(file) {
-  if (!file || file.type !== 'application/pdf') return Utils.showToast('请选择有效的PDF文件', true);
-  
-  const S = p2iStore.get();
-  const statusBox = app.querySelector('#p2i-status');
-  const titleEl = app.querySelector('#p2i-status-title');
-  const detailEl = app.querySelector('#p2i-status-detail');
-  const bar = app.querySelector('#p2i-progress-bar');
-  
-  statusBox.classList.remove('hidden');
-  titleEl.textContent = '正在解析 PDF...';
-  detailEl.textContent = '请稍候';
-  bar.style.width = '0%';
-
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const totalPages = doc.numPages;
-    const zip = new JSZip(); // 初始化 JSZip
-
-    let htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>PDF 转 Word</title></head><body>`;
-    
-    for (let i = 1; i <= totalPages; i++) {
-      titleEl.textContent = `正在转换...`;
-      detailEl.textContent = `已处理 ${i} / ${totalPages} 页`;
-      bar.style.width = `${(i / totalPages) * 100}%`;
-      
-      const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: S.scale });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-      
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      
-      if (S.mode === 'word') {
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        htmlContent += `<img src="${imgData}" style="width:100%;"/>`;
-        if (i < totalPages) {
-          htmlContent += `<br clear=all style='page-break-before:always'>`;
-        }
-      } else if (S.mode === 'zip') {
-        const blob = await new Promise(res => canvas.toBlob(res, `image/${S.format}`, 0.92));
-        const imgName = `${file.name.replace(/\.pdf$/i, '')}_第${String(i).padStart(3, '0')}页.${S.format === 'jpeg' ? 'jpg' : 'png'}`;
-        zip.file(imgName, blob);
-      }
-    }
-    
-    titleEl.textContent = '正在生成文件...';
-    detailEl.textContent = '即将开始下载';
-    
-    if (S.mode === 'word') {
-      htmlContent += `</body></html>`;
-      const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
-      saveAs(blob, file.name.replace(/\.pdf$/i, '') + '.doc');
-    } else if (S.mode === 'zip') {
-      const content = await zip.generateAsync({ type: "blob" }, (metadata) => {
-        detailEl.textContent = `正在打包: ${metadata.percent.toFixed(0)}%`;
-      });
-      saveAs(content, file.name.replace(/\.pdf$/i, '') + '_图片包.zip');
-    }
-    
-    titleEl.textContent = '转换完成！';
-    detailEl.textContent = '文件已开始下载';
-    Utils.showToast('文件已生成！');
-    
-  } catch (err) {
-    console.error(err);
-    titleEl.textContent = '转换失败';
-    detailEl.textContent = 'PDF 可能已加密或损坏，或内存不足';
-    Utils.showToast('转换失败: ' + err.message, true);
-  }
-}
-
-// 数字转中文大写
-function doConvert() {
-  const input = app.querySelector('#num-input'), output = app.querySelector('#num-output'); if (!input || !output) return;
-  let val = input.value.replace(/[^\d.-]/g, '').replace(/-/g, (m, o) => o === 0 ? '-' : '').replace(/\./g, (m, o, s) => s.indexOf('.') === o ? '.' : '');
-  if (val !== input.value) input.value = val;
-  if (!val || val === '-' || val === '.') {
-    output.innerHTML = '<span class="text-[--muted] text-base font-sans font-normal">结果将显示在这里</span><div class="copy-icon" style="display:none">' + Icons.copy + '</div>';
-    return;
-  }
-  const res = Utils.numberToChinese(val);
-  if (res === '数字超出支持范围') {
-    output.innerHTML = '<span class="text-[--accent] text-base font-sans font-normal">数字超出支持范围（最大16位整数）</span><div class="copy-icon" style="display:none">' + Icons.copy + '</div>';
+  // 默认选中
+  const defaultModel = state.device.model || deviceModels[state.device.brand]?.[0] || 'iPhone 15 Pro';
+  const defaultChip = [...picker.querySelectorAll('.device-chip')].find(c => c.dataset.device === defaultModel);
+  if(defaultChip){
+    defaultChip.classList.add('active');
+    state.currentDeviceChip = defaultModel;
+    document.getElementById('inputDevice').value = defaultModel;
   } else {
-    output.innerHTML = `<span>${res}</span><div class="copy-icon">${Icons.copy}</div>`;
-  }
-}
-
-// 图片转 PDF
-async function handleImageFiles(fileList) {
-  const valid = Array.from(fileList).filter(f => f.type.startsWith('image/') || f.name.match(/\.(jpg|jpeg|png|webp|bmp|heic|heif)$/i)); if (!valid.length) return;
-  const results = await Promise.all(valid.map(async file => {
-    try {
-      let blob = file; if (Utils.isHeic(file)) { const res = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }); blob = Array.isArray(res) ? res[0] : res; }
-      const url = URL.createObjectURL(blob);
-      const { w, h } = await new Promise((res, rej) => {
-        const img = new Image();
-        img.onload = () => res({ w: img.width, h: img.height });
-        img.onerror = () => rej(new Error('图片加载失败'));
-        img.src = url;
-      });
-      return { url, blob, w, h, name: file.name };
-    } catch { Utils.showToast('处理失败: ' + file.name, true); return null; }
-  }));
-  imageStore.set(s => ({ ...s, files: [...s.files, ...results.filter(Boolean)] }));
-  syncImageListDOM();
-}
-
-async function convertToPdf() {
-  const files = imageStore.get().files; if (!files.length) return Utils.showToast('请先选择图片', true);
-  const btn = app.querySelector('#convert-img-btn'); btn.setAttribute('disabled', ''); btn.innerHTML = '<div class="spinner"></div> 正在生成...';
-  try {
-    const { jsPDF } = window.jspdf; let pdf = null;
-    for (const f of files) {
-      const img = new Image(); img.src = f.url;
-      await new Promise((r, rej) => {
-        img.onload = r;
-        img.onerror = () => rej(new Error('图片加载失败'));
-      });
-      const c = document.createElement('canvas'); c.width = f.w; c.height = f.h;
-      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, f.w, f.h); ctx.drawImage(img, 0, 0, f.w, f.h);
-      const S = imageStore.get();
-      if (S.mode === 'fit') {
-        const o = f.w >= f.h ? 'landscape' : 'portrait'; if (!pdf) pdf = new jsPDF({ unit: 'pt', format: [f.w, f.h], orientation: o }); else pdf.addPage([f.w, f.h], o);
-        pdf.addImage(c, 'JPEG', 0, 0, f.w, f.h, undefined, 'FAST');
-      } else {
-        const o = S.orient === 'auto' ? (f.w > f.h ? 'landscape' : 'portrait') : S.orient; if (!pdf) pdf = new jsPDF({ orientation: o, unit: 'mm', format: 'a4' }); else pdf.addPage('a4', o);
-        const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), r = Math.min((pw - 20) / f.w, (ph - 20) / f.h);
-        pdf.addImage(c, 'JPEG', (pw - f.w * r) / 2, (ph - f.h * r) / 2, f.w * r, f.h * r, undefined, 'FAST');
-      }
+    const firstChip = picker.querySelector('.device-chip');
+    if(firstChip){
+      firstChip.classList.add('active');
+      state.currentDeviceChip = firstChip.dataset.device;
+      document.getElementById('inputDevice').value = state.currentDeviceChip;
     }
-    pdf.save(`images_${new Date().toISOString().slice(0, 10)}.pdf`); Utils.showToast('PDF 已生成并下载');
-  } catch (e) { Utils.showToast('生成失败: ' + e.message, true); } finally { btn.removeAttribute('disabled'); btn.innerHTML = '生成并下载 PDF'; }
-}
+  }
 
-// 图片压缩
-async function calculateEstimates(file) {
-  const url = URL.createObjectURL(file);
-  const img = new Image(); img.src = url;
-  await new Promise((r, rej) => {
-    img.onload = r;
-    img.onerror = () => rej(new Error('图片加载失败'));
+  picker.querySelectorAll('.device-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      picker.querySelectorAll('.device-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.currentDeviceChip = chip.dataset.device;
+      document.getElementById('inputDevice').value = chip.dataset.device;
+      drawResult();
+    });
   });
-  URL.revokeObjectURL(url);
-  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
-  const getBlobSize = (type, q) => new Promise(r => c.toBlob(b => r(b ? b.size : 0), type, q));
-  const [jpeg, webp, png] = await Promise.all([getBlobSize('image/jpeg', 0.8), getBlobSize('image/webp', 0.8), getBlobSize('image/png', 1.0)]);
-  compressStore.set(s => ({ ...s, estimates: { jpeg, webp, png } }));
-  renderFormatCards();
 }
 
-async function doCompress() {
-  const S = compressStore.get(); if (!S.file) return;
-  const taskId = ++compressTaskId;
-  const img = new Image(); img.src = S.url;
-  await new Promise((r, rej) => {
-    img.onload = r;
-    img.onerror = () => rej(new Error('图片加载失败'));
+/* ============= 事件绑定 ============= */
+function bindEvents(){
+  // 摄像头
+  document.getElementById('enableCameraBtn').addEventListener('click', startCamera);
+  document.getElementById('shutterBtn').addEventListener('click', capture);
+  document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
+  document.getElementById('gridBtn').addEventListener('click', () => {
+    const g = document.getElementById('gridOverlay');
+    g.style.display = g.style.display === 'none' ? 'block' : 'none';
   });
-  const w = Math.round(img.width * (S.scale / 100)), h = Math.round(img.height * (S.scale / 100));
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
-  const blob = await new Promise(r => c.toBlob(r, `image/${S.format}`, S.quality));
-  if (taskId !== compressTaskId) return;
-  if (S.resultUrl) URL.revokeObjectURL(S.resultUrl);
-  compressStore.set(s => ({ ...s, resultBlob: blob, resultUrl: URL.createObjectURL(blob) }));
-  const preview = app.querySelector('#comp-preview'), placeholder = app.querySelector('#comp-placeholder');
-  if (preview) { preview.src = compressStore.get().resultUrl; preview.classList.remove('hidden'); placeholder?.classList.add('hidden'); }
-  const elSize = app.querySelector('#comp-new-size'); if (elSize) elSize.textContent = Utils.formatSize(blob.size);
-  const dlBtn = app.querySelector('#comp-dl-btn'); if (dlBtn) dlBtn.removeAttribute('disabled');
-}
 
-// 大小写转换
-function doTextCase() {
-  const input = app.querySelector('#tc-input'), output = app.querySelector('#tc-output'); if (!input || !output) return;
-  textStore.set(s => ({ ...s, input: input.value }));
-  output.value = Utils.convertCase(input.value, textStore.get().mode);
-  const chars = input.value.length, words = input.value.trim() ? input.value.trim().split(/\s+/).length : 0, lines = input.value ? input.value.split('\n').length : 0;
-  const cEl = app.querySelector('#tc-chars'), wEl = app.querySelector('#tc-words'), lEl = app.querySelector('#tc-lines');
-  if (cEl) cEl.textContent = chars; if (wEl) wEl.textContent = words; if (lEl) lEl.textContent = lines;
-}
+  // 相册/上传
+  document.getElementById('albumBtn').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+  document.getElementById('manualUploadBtn').addEventListener('click', () => {
+    document.getElementById('cameraInput').click();
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if(e.target.files[0]) loadFromFile(e.target.files[0]);
+  });
+  document.getElementById('cameraInput').addEventListener('change', e => {
+    if(e.target.files[0]) loadFromFile(e.target.files[0]);
+  });
 
-// 随机数据生成
-function doGenerateMock() {
-  const S = mockStore.get();
-  const count = Math.max(1, Math.min(1000, S.count));
-  let results = [];
-
-  try {
-    if (S.type === 'uuid') {
-      for (let i = 0; i < count; i++) results.push(crypto.randomUUID());
-    } else if (S.type === 'password') {
-      let chars = '';
-      if (S.pwdOpts.upper) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      if (S.pwdOpts.lower) chars += 'abcdefghijklmnopqrstuvwxyz';
-      if (S.pwdOpts.num) chars += '0123456789';
-      if (S.pwdOpts.sym) chars += '!@#$%^&*()_+~`|{}[]:;?><,./-=';
-      if (!chars) return Utils.showToast('请至少选择一种字符类型', true);
-      for (let i = 0; i < count; i++) {
-        let pwd = '';
-        const arr = new Uint32Array(S.pwdLen);
-        crypto.getRandomValues(arr);
-        for (let j = 0; j < S.pwdLen; j++) pwd += chars[arr[j] % chars.length];
-        results.push(pwd);
-      }
-    } else if (S.type === 'number') {
-      const min = parseFloat(S.numMin) || 0;
-      const max = parseFloat(S.numMax) || 100;
-      const dec = Math.max(0, Math.min(6, S.numDec));
-      for (let i = 0; i < count; i++) {
-        const val = Math.random() * (max - min) + min;
-        results.push(val.toFixed(dec));
-      }
-    } else if (S.type === 'picker') {
-      const list = S.listText.split('\n').map(s => s.trim()).filter(Boolean);
-      if (!list.length) return Utils.showToast('请输入候选名单', true);
-      const pickCount = Math.min(count, list.length);
-      const shuffled = [...list].sort(() => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295 - 0.5);
-      results = shuffled.slice(0, pickCount);
+  // 编辑器
+  document.getElementById('editorBackBtn').addEventListener('click', () => {
+    if(state.stream) {
+      switchView('cameraView');
+    } else {
+      window.history.back();
     }
+  });
+  document.getElementById('editorSaveBtn').addEventListener('click', saveImage);
 
-    const resStr = results.join('\n');
-    mockStore.set(s => ({ ...s, result: resStr }));
-    const el = app.querySelector('#mock-result');
-    if (el) el.textContent = resStr;
-    Utils.showToast(`成功生成 ${results.length} 条数据`);
-  } catch (e) {
-    Utils.showToast('生成失败: ' + e.message, true);
-  }
+  // 表单输入
+  ['inputTime','inputLocation','inputLat','inputLng','inputDevice','inputNote'].forEach(id => {
+    document.getElementById(id).addEventListener('input', drawResult);
+  });
+
+  // 重新定位
+  document.getElementById('refreshLocBtn').addEventListener('click', () => {
+    requestLocation();
+  });
+
+  // 开关
+  ['switchCoord','switchNote','switchLogo'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      e.currentTarget.classList.toggle('on');
+      state[id.replace('switch','show').charAt(0).toLowerCase() + id.replace('switch','show').slice(1)] = e.currentTarget.classList.contains('on');
+      drawResult();
+    });
+  });
+
+  // 保存遮罩
+  document.getElementById('saveCloseBtn').addEventListener('click', () => {
+    document.getElementById('saveOverlay').classList.remove('show');
+  });
+  document.getElementById('saveNewBtn').addEventListener('click', () => {
+    document.getElementById('saveOverlay').classList.remove('show');
+    state.capturedImage = null;
+    switchView('cameraView');
+    if(!state.stream) startCamera();
+  });
 }
 
-// 日期计算
-function doCalculateDateDiff() {
-  const startStr = app.querySelector('#date-start').value;
-  const endStr = app.querySelector('#date-end').value;
-
-  if (!startStr || !endStr) return Utils.showToast('请选择完整的日期', true);
-
-  const start = new Date(startStr);
-  const end = new Date(endStr);
-  start.setHours(0,0,0,0);
-  end.setHours(0,0,0,0);
-
-  if (isNaN(start) || isNaN(end)) return Utils.showToast('日期格式无效', true);
-
-  const totalDays = Math.abs(Math.round((end - start) / (1000 * 60 * 60 * 24)));
-
-  let workDays = 0, weekendDays = 0;
-  const s = start <= end ? start : end;
-  const e = start <= end ? end : start;
-  let current = new Date(s);
-
-  while (current < e) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) workDays++;
-    else weekendDays++;
-    current.setDate(current.getDate() + 1);
-  }
-
-  const later = start <= end ? end : start;
-  const earlier = start <= end ? start : end;
-
-  let years = later.getFullYear() - earlier.getFullYear();
-  let months = later.getMonth() - earlier.getMonth();
-  let days = later.getDate() - earlier.getDate();
-  if (days < 0) { months--; days += new Date(later.getFullYear(), later.getMonth(), 0).getDate(); }
-  if (months < 0) { years--; months += 12; }
-
-  const res = { totalDays, workDays, weekendDays, years, months, days };
-  dateStore.set(s => ({ ...s, startDate: startStr, endDate: endStr, result: res }));
-  renderDateDiffResult(res);
-}
-
-function doCalculateDateOffset() {
-  const baseStr = app.querySelector('#date-base').value;
-  const offset = parseInt(app.querySelector('#date-offset').value) || 0;
-  const unit = app.querySelector('#date-unit').value;
-
-  if (!baseStr) return Utils.showToast('请选择基准日期', true);
-
-  const base = new Date(baseStr);
-  if (isNaN(base)) return Utils.showToast('日期格式无效', true);
-
-  const resultDate = new Date(base);
-
-  if (unit === 'days') {
-    resultDate.setDate(resultDate.getDate() + offset);
-  } else if (unit === 'weeks') {
-    resultDate.setDate(resultDate.getDate() + (offset * 7));
-  } else if (unit === 'years') {
-    resultDate.setFullYear(resultDate.getFullYear() + offset);
-    if (base.getMonth() === 1 && base.getDate() === 29 && resultDate.getMonth() !== 1) {
-      resultDate.setDate(0);
-    }
-  } else if (unit === 'months') {
-    const dayOfMonth = resultDate.getDate();
-    resultDate.setDate(1);
-    resultDate.setMonth(resultDate.getMonth() + offset);
-    const targetMonth = resultDate.getMonth();
-    const targetYear = resultDate.getFullYear();
-    const targetMonthLastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
-    resultDate.setDate(Math.min(dayOfMonth, targetMonthLastDay));
-  }
-
-  const unitNames = { days: '天', weeks: '周', months: '个月', years: '年' };
-  const dayOfWeek = resultDate.getDay();
-  const isWorkday = dayOfWeek !== 0 && dayOfWeek !== 6;
-
-  const res = {
-    dateStr: Utils.formatDate(resultDate),
-    offset,
-    unitName: unitNames[unit],
-    isWorkday
+/* ============= 实时时间 ============= */
+function startLiveTime(){
+  const update = () => {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('liveTime').textContent = `${h}:${m}`;
   };
-
-  dateStore.set(s => ({ ...s, baseDate: baseStr, offset, unit, result: res }));
-  renderDateCalcResult(res);
+  update();
+  setInterval(update, 1000);
 }
 
-// ═══════════════════════════════════════════
-// 8. 事件委托
-// ═══════════════════════════════════════════
-app.addEventListener('click', async e => {
-  const t = e.target, closest = sel => t.closest(sel);
-  if (closest('[data-action="home"]')) return location.hash = '#/';
-
-  if (closest('#reset-number')) {
-    const i = app.querySelector('#num-input'), o = app.querySelector('#num-output');
-    if(i) i.value='';
-    if(o) o.innerHTML = '<span class="text-[--muted] text-base font-sans font-normal">结果将显示在这里</span><div class="copy-icon" style="display:none">' + Icons.copy + '</div>';
-    return;
+/* ============= 摄像头 ============= */
+async function startCamera(){
+  document.getElementById('permissionPrompt').style.display = 'none';
+  try {
+    state.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: state.facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = state.stream;
+    video.style.transform = state.facingMode === 'user' ? 'scaleX(-1)' : 'none';
+  } catch(err) {
+    console.error(err);
+    showToast('无法访问摄像头，请检查权限或使用上传功能', 'error');
+    document.getElementById('permissionPrompt').style.display = 'flex';
   }
-
-  if (closest('#num-output')) {
-    const output = app.querySelector('#num-output');
-    const text = output.querySelector('span').textContent;
-    if (text && !text.includes('结果将显示在这里') && !text.includes('数字超出支持范围')) {
-      Utils.copy(text).then(() => Utils.showToast('已复制结果'));
-    }
-    return;
-  }
-
-  if (closest('#reset-image')) return resetStore(imageStore, { files: [], mode: 'fit', orient: 'auto', quality: 0.8 });
-  if (closest('#reset-compress')) return resetStore(compressStore, { file: null, url: '', name: '', origSize: 0, quality: 0.8, format: 'jpeg', scale: 100, resultBlob: null, resultUrl: '', estimates: { jpeg: 0, webp: 0, png: 0 } });
-  if (closest('#reset-text')) return resetStore(textStore, { input: '', mode: 'upper' });
-  if (closest('#reset-mock')) return resetStore(mockStore, { type: 'uuid', count: 10, pwdLen: 12, pwdOpts: { upper: true, lower: true, num: true, sym: true }, numMin: 1, numMax: 100, numDec: 2, listText: '', listCount: 1, result: '' });
-  if (closest('#reset-date')) return resetStore(dateStore, { mode: 'diff', startDate: '', endDate: '', baseDate: '', offset: 1, unit: 'days', result: null });
-
-  for (const key of ['mode', 'orient', 'quality']) { const opt = closest(`[data-${key}]`); if (opt && app.querySelector('#convert-img-btn')) { app.querySelectorAll(`[data-${key}]`).forEach(o => o.classList.remove('active')); opt.classList.add('active'); imageStore.set(s => ({ ...s, [key]: key === 'quality' ? parseFloat(opt.dataset[key]) : opt.dataset[key] })); return; } }
-
-  const rmImg = closest('[data-rm-img]'); if (rmImg) { const i = +rmImg.dataset.rmImg; const files = imageStore.get().files; URL.revokeObjectURL(files[i].url); files.splice(i, 1); imageStore.set(s => ({ ...s, files })); syncImageListDOM(); return; }
-  if (closest('#convert-img-btn')) return convertToPdf();
-
-  const cfmt = closest('[data-cfmt]'); if (cfmt && app.querySelector('#comp-ctrl')) { app.querySelectorAll('[data-cfmt]').forEach(o => o.classList.remove('active')); cfmt.classList.add('active'); compressStore.set(s => ({ ...s, format: cfmt.dataset.cfmt })); renderFormatCards(); return doCompress(); }
-  if (closest('#comp-dl-btn')) { const s = compressStore.get(); if (s.resultUrl) Utils.downloadDataURL(s.resultUrl, `compressed_${Date.now()}.${s.format}`); return; }
-
-  const cm = closest('[data-case-mode]'); if (cm && app.querySelector('#tc-input')) { textStore.set(s => ({ ...s, mode: cm.dataset.caseMode })); app.querySelectorAll('[data-case-mode]').forEach(b => b.className = `btn ${b.dataset.caseMode === textStore.get().mode ? 'btn-primary' : 'btn-ghost'}`); return doTextCase(); }
-  if (closest('#tc-copy-btn')) { const v = app.querySelector('#tc-output').value; if (!v) return Utils.showToast('结果为空', true); Utils.copy(v).then(() => Utils.showToast('已复制结果')); return; }
-
-  const mt = closest('[data-mock-type]');
-  if (mt) {
-    mockStore.set(s => ({ ...s, type: mt.dataset.mockType }));
-    return renderMockTool();
-  }
-  if (closest('#mock-gen-btn')) return doGenerateMock();
-  if (closest('#mock-copy-btn')) { const v = mockStore.get().result; if (!v) return Utils.showToast('结果为空', true); Utils.copy(v).then(() => Utils.showToast('已复制结果')); return; }
-  if (closest('#mock-clear-btn')) { mockStore.set(s => ({ ...s, result: '' })); const el = app.querySelector('#mock-result'); if(el) el.textContent = '点击"立即生成"查看结果...'; return; }
-
-  const dm = closest('[data-date-mode]'); if (dm) { dateStore.set(s => ({ ...s, mode: dm.dataset.dateMode, result: null })); return renderDateTool(); }
-  if (closest('#date-calc-diff-btn')) return doCalculateDateDiff();
-  if (closest('#date-calc-offset-btn')) return doCalculateDateOffset();
-
-  // PDF 可视化工作台
-  if (closest('#btn-reset')) return resetPdfStore();
-  const pmode = closest('[data-mode]');
-  if (pmode) {
-    pdfStore.set(s => ({ ...s, mode: pmode.dataset.mode }));
-    document.querySelectorAll('[data-mode]').forEach(el => el.classList.toggle('active', el.dataset.mode === pmode.dataset.mode));
-    const grid = document.getElementById('thumb-grid');
-    if (grid) grid.classList.toggle('mode-delete', pmode.dataset.mode === 'delete');
-    return;
-  }
-  if (closest('#btn-select-all')) {
-    const S = pdfStore.get();
-    const all = Array.from({ length: S.pageCount }, (_, i) => i + 1);
-    pdfStore.set(s => ({ ...s, selected: all }));
-    updateThumbUI();
-    return;
-  }
-  if (closest('#btn-invert')) {
-    const S = pdfStore.get();
-    const newSel = [];
-    for (let i = 1; i <= S.pageCount; i++) if (!S.selected.includes(i)) newSel.push(i);
-    pdfStore.set(s => ({ ...s, selected: newSel }));
-    updateThumbUI();
-    return;
-  }
-  if (closest('#btn-clear')) {
-    pdfStore.set(s => ({ ...s, selected: [] }));
-    updateThumbUI();
-    return;
-  }
-  if (closest('#btn-process')) return processPdf();
-
-  // PDF 转图片
-  const p2iMode = closest('[data-p2i-mode]');
-  if (p2iMode) {
-    const mode = p2iMode.dataset.p2iMode;
-    p2iStore.set(s => ({ ...s, mode }));
-    app.querySelectorAll('[data-p2i-mode]').forEach(el => el.classList.toggle('active', el.dataset.p2iMode === mode));
-    const fmtWrap = app.querySelector('#p2i-format-wrap');
-    if (mode === 'word') fmtWrap.classList.add('hidden');
-    else fmtWrap.classList.remove('hidden');
-    return;
-  }
-});
-
-app.addEventListener('input', e => {
-  const id = e.target.id;
-  if (id === 'num-input') return doConvert();
-  if (id === 'tc-input') return doTextCase();
-  if (id === 'comp-q') { compressStore.set(s => ({ ...s, quality: e.target.value / 100 })); app.querySelector('#comp-q-val').textContent = e.target.value; return Utils.debounce(doCompress, 300)(); }
-  if (id === 'comp-s') { compressStore.set(s => ({ ...s, scale: parseInt(e.target.value) })); app.querySelector('#comp-s-val').textContent = e.target.value; return Utils.debounce(doCompress, 300)(); }
-
-  if (id === 'mock-count') mockStore.set(s => ({ ...s, count: parseInt(e.target.value) }));
-  if (id === 'mock-pwd-len') { mockStore.set(s => ({ ...s, pwdLen: parseInt(e.target.value) })); e.target.previousElementSibling.textContent = `密码长度: ${e.target.value}`; }
-  if (id === 'pwd-upper') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, upper: e.target.checked } }));
-  if (id === 'pwd-lower') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, lower: e.target.checked } }));
-  if (id === 'pwd-num') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, num: e.target.checked } }));
-  if (id === 'pwd-sym') mockStore.set(s => ({ ...s, pwdOpts: { ...s.pwdOpts, sym: e.target.checked } }));
-  if (id === 'mock-num-min') mockStore.set(s => ({ ...s, numMin: e.target.value }));
-  if (id === 'mock-num-max') mockStore.set(s => ({ ...s, numMax: e.target.value }));
-  if (id === 'mock-num-dec') mockStore.set(s => ({ ...s, numDec: parseInt(e.target.value) }));
-  if (id === 'mock-list') mockStore.set(s => ({ ...s, listText: e.target.value }));
-
-  if (id === 'p2i-scale') p2iStore.set(s => ({ ...s, scale: parseFloat(e.target.value) }));
-  if (id === 'p2i-format') p2iStore.set(s => ({ ...s, format: e.target.value }));
-});
-
-app.addEventListener('change', e => {
-  if (e.target.id === 'p2i-scale' || e.target.id === 'p2i-format') {
-    // 触发 input 事件兼容处理
-    app.dispatchEvent(new InputEvent('input', { bubbles: true, data: e.target.value, target: e.target }));
-  }
-});
-
-app.addEventListener('files-selected', async e => {
-  const zone = e.target;
-  if (zone.id === 'img-drop') return handleImageFiles(e.detail);
-  if (zone.id === 'pdf-drop') {
-    const file = e.detail[0];
-    if (!file || file.type !== 'application/pdf') return Utils.showToast('请选择有效的PDF文件', true);
-    const dropEl = document.getElementById('pdf-drop');
-    if (dropEl) dropEl.style.pointerEvents = 'none';
-    try {
-      Utils.showToast('正在解析 PDF...');
-      pdfArrayBuffer = await file.arrayBuffer();
-      pdfJsDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer.slice(0) }).promise;
-      currentFile = file;
-      pdfStore.set({ fileName: file.name, pageCount: pdfJsDoc.numPages, mode: 'delete', selected: [] });
-      renderPdfTool();
-    } catch (err) {
-      Utils.showToast('PDF 解析失败，可能已加密或损坏', true);
-      if (dropEl) dropEl.style.pointerEvents = 'auto';
-    }
-    return;
-  }
-  if (zone.id === 'p2i-drop') {
-    const file = e.detail[0];
-    return convertPdfToImages(file);
-  }
-  if (zone.id === 'comp-drop') {
-    const file = e.detail[0]; if (!file || !file.type.startsWith('image/')) return Utils.showToast('请选择有效的图片', true);
-    const s = compressStore.get();
-    if (s.url) URL.revokeObjectURL(s.url); if (s.resultUrl) URL.revokeObjectURL(s.resultUrl);
-    const url = URL.createObjectURL(file);
-    compressStore.set({ file, url, name: file.name, origSize: file.size, quality: 0.8, format: 'jpeg', scale: 100, resultBlob: null, resultUrl: '', estimates: { jpeg: 0, webp: 0, png: 0 } });
-    app.querySelector('#comp-ctrl')?.classList.remove('hidden'); app.querySelector('#comp-orig-size').textContent = Utils.formatSize(file.size);
-    app.querySelector('#comp-new-size').textContent = '计算中...';
-    const preview = app.querySelector('#comp-preview'), placeholder = app.querySelector('#comp-placeholder');
-    if (preview) { preview.src = url; preview.classList.remove('hidden'); placeholder?.classList.add('hidden'); }
-    calculateEstimates(file); return doCompress();
-  }
-});
-
-window.addEventListener('beforeunload', () => {
-  imageStore.get().files.forEach(f => URL.revokeObjectURL(f.url));
-  const cs = compressStore.get();
-  ['url', 'resultUrl'].forEach(k => { if (cs[k]) URL.revokeObjectURL(cs[k]); });
-  if (pdfObserver) pdfObserver.disconnect();
-});
-
-// ═══════════════════════════════════════════
-// 9. 路由
-// ═══════════════════════════════════════════
-const ROUTES = {
-  '/': renderHome,
-  '/text-case': renderTextCaseTool,
-  '/pdf-split-merge': renderPdfTool,
-  '/pdf-to-image': renderPdfToImageTool,
-  '/date-calculator': renderDateTool,
-  '/number-to-chinese': renderNumberTool,
-  '/mock-generator': renderMockTool,
-  '/image-compress': renderCompressTool,
-  '/image-to-pdf': renderImageTool
-};
-
-function router() {
-  const base = (location.hash.slice(1) || '/').split('?')[0];
-  if (base !== '/image-to-pdf' && sortableInst) { sortableInst.destroy(); sortableInst = null; }
-  if (base !== '/pdf-split-merge' && pdfObserver) { pdfObserver.disconnect(); pdfObserver = null; }
-  (ROUTES[base] || renderHome)(); window.scrollTo(0, 0);
 }
-window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', () => { if (!location.hash) location.hash = '#/'; else router(); });
+
+async function switchCamera(){
+  if(!state.stream) return;
+  state.stream.getTracks().forEach(t => t.stop());
+  state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
+  await startCamera();
+}
+
+function capture(){
+  const video = document.getElementById('cameraVideo');
+  if(!video.videoWidth){
+    showToast('摄像头未就绪', 'error');
+    return;
+  }
+
+  // 闪光动画
+  const flash = document.getElementById('flash');
+  flash.classList.remove('active');
+  void flash.offsetWidth;
+  flash.classList.add('active');
+
+  // 拍照
+  const canvas = document.getElementById('cameraCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  // 后置摄像头正常绘制，前置镜像
+  if(state.facingMode === 'user'){
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const img = new Image();
+  img.onload = () => {
+    state.capturedImage = img;
+    enterEditor();
+  };
+  img.src = dataUrl;
+}
+
+function loadFromFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.capturedImage = img;
+      enterEditor();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ============= 定位 ============= */
+function requestLocation(){
+  const locEl = document.getElementById('topLoc');
+  const locText = document.getElementById('locText');
+  const locDot = document.getElementById('locDot');
+  const locTag = document.getElementById('locTag');
+
+  if(!navigator.geolocation){
+    locText.textContent = '不支持定位';
+    locEl.classList.add('waiting');
+    return;
+  }
+
+  locText.textContent = '正在定位...';
+  locDot.classList.remove('fixed');
+  locEl.classList.add('waiting');
+  locTag.textContent = '定位中';
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      state.geo.lat = pos.coords.latitude.toFixed(6);
+      state.geo.lng = pos.coords.longitude.toFixed(6);
+      state.geo.accuracy = pos.coords.accuracy;
+      state.locationReady = true;
+
+      locText.textContent = `${state.geo.lat}°, ${state.geo.lng}°`;
+      locDot.classList.add('fixed');
+      locEl.classList.remove('waiting');
+      locTag.textContent = '已定位';
+
+      // 填充编辑表单
+      document.getElementById('inputLat').value = state.geo.lat;
+      document.getElementById('inputLng').value = state.geo.lng;
+
+      // 逆地理编码
+      reverseGeocode(state.geo.lat, state.geo.lng);
+    },
+    err => {
+      console.warn(err);
+      locText.textContent = '定位失败，请手动输入';
+      locEl.classList.add('waiting');
+      locTag.textContent = '未获取';
+      showToast('定位失败，可在编辑页手动输入', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+async function reverseGeocode(lat, lng){
+  try {
+    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`);
+    const data = await res.json();
+    if(data && data.city){
+      const parts = [
+        data.principalSubdivision,
+        data.city,
+        data.locality,
+        data.thoroughfare,
+      ].filter(Boolean);
+      const address = parts.join('·') || data.locality || '未知地点';
+      state.geo.address = address;
+      document.getElementById('inputLocation').value = address;
+      document.getElementById('topLoc').classList.remove('waiting');
+      document.getElementById('locText').textContent = address;
+      if(state.capturedImage) drawResult();
+    }
+  } catch(err) {
+    console.warn('逆地理编码失败', err);
+  }
+}
+
+/* ============= 编辑器 ============= */
+function enterEditor(){
+  switchView('editorView');
+
+  // 填充默认值
+  const now = new Date();
+  const timeStr = formatTime(now);
+  document.getElementById('inputTime').value = timeStr;
+
+  if(state.geo.lat){
+    document.getElementById('inputLat').value = state.geo.lat;
+    document.getElementById('inputLng').value = state.geo.lng;
+  }
+  if(state.geo.address){
+    document.getElementById('inputLocation').value = state.geo.address;
+  }
+  if(!document.getElementById('inputDevice').value){
+    document.getElementById('inputDevice').value = state.currentDeviceChip || 'iPhone 15 Pro';
+  }
+
+  drawResult();
+}
+
+function formatTime(date){
+  const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+  const y = date.getFullYear();
+  const mo = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  const w = weekdays[date.getDay()];
+  const h = String(date.getHours()).padStart(2,'0');
+  const mi = String(date.getMinutes()).padStart(2,'0');
+  return `${y}.${mo}.${d} ${w} ${h}:${mi}`;
+}
+
+function switchView(viewId){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(viewId).classList.add('active');
+
+  if(viewId === 'cameraView' && state.stream){
+    const video = document.getElementById('cameraVideo');
+    if(video.srcObject !== state.stream) video.srcObject = state.stream;
+  }
+}
+
+/* ============= 水印绘制 ============= */
+function drawResult(){
+  if(!state.capturedImage) return;
+  const canvas = document.getElementById('resultCanvas');
+  const ctx = canvas.getContext('2d');
+  const img = state.capturedImage;
+
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  ctx.drawImage(img, 0, 0);
+
+  drawWatermark(ctx, canvas.width, canvas.height);
+}
+
+function drawWatermark(ctx, W, H){
+  const time = document.getElementById('inputTime').value || formatTime(new Date());
+  const location = document.getElementById('inputLocation').value || '未填写地点';
+  const lat = document.getElementById('inputLat').value;
+  const lng = document.getElementById('inputLng').value;
+  const device = document.getElementById('inputDevice').value || '未知设备';
+  const note = document.getElementById('inputNote').value;
+
+  // 水印条高度（根据图片大小自适应）
+  const baseSize = Math.min(W, H);
+  const barH = Math.max(baseSize * 0.16, 80);
+  const padding = Math.max(baseSize * 0.035, 16);
+  const fontSize = Math.max(baseSize * 0.028, 13);
+  const fontSizeSmall = Math.max(baseSize * 0.022, 11);
+  const fontSizeTime = Math.max(baseSize * 0.04, 18);
+
+  // 底部渐变遮罩
+  const grad = ctx.createLinearGradient(0, H - barH, 0, H);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(0.3, 'rgba(0,0,0,0.5)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, H - barH, W, barH);
+
+  // 顶部细线
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding, H - barH);
+  ctx.lineTo(W - padding, H - barH);
+  ctx.stroke();
+
+  // 左侧 logo 标识
+  if(state.showLogo){
+    const logoX = padding;
+    const logoY = H - barH/2;
+    const logoSize = fontSizeTime * 1.2;
+
+    // logo 圆点
+    ctx.fillStyle = '#0d9488';
+    ctx.beginPath();
+    ctx.arc(logoX + logoSize/2, logoY, logoSize/2, 0, Math.PI*2);
+    ctx.fill();
+
+    // logo 文字
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `700 ${fontSizeSmall * 1.1}px 'Noto Sans SC', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('W', logoX + logoSize/2, logoY + 1);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = `400 ${fontSizeSmall}px 'Noto Sans SC', sans-serif`;
+    ctx.fillText('工作水印', logoX + logoSize + 8, logoY);
+  }
+
+  // 右侧信息
+  const infoX = state.showLogo ? padding + fontSizeTime * 1.2 + 80 : padding;
+  const infoEndX = W - padding;
+  const infoW = infoEndX - infoX;
+  let y = H - barH + padding * 1.2;
+
+  // 时间（大字）
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 ${fontSizeTime}px 'JetBrains Mono', monospace`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(time, infoX, y);
+
+  // 地点
+  y += fontSizeTime * 1.4;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = `500 ${fontSize}px 'Noto Sans SC', sans-serif`;
+  // 地点图标
+  drawLocationIcon(ctx, infoX, y + fontSize * 0.3, fontSize * 0.8);
+  ctx.fillText(truncateText(ctx, location, infoW - fontSize * 1.5), infoX + fontSize * 1.3, y);
+
+  // 经纬度
+  if(state.showCoord && lat && lng){
+    y += fontSize * 1.8;
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font = `400 ${fontSizeSmall}px 'JetBrains Mono', monospace`;
+    const coordText = `${formatCoord(lat, 'N')}  ${formatCoord(lng, 'E')}`;
+    ctx.fillText(coordText, infoX, y);
+    if(state.geo.accuracy){
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillText(`  ±${Math.round(state.geo.accuracy)}m`, infoX + ctx.measureText(coordText).width, y);
+    }
+  }
+
+  // 设备 + 备注
+  y += fontSizeSmall * 2;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = `400 ${fontSizeSmall}px 'Noto Sans SC', sans-serif`;
+  let bottomLine = device;
+  if(state.showNote && note){
+    bottomLine += `  ·  ${note}`;
+  }
+  ctx.fillText(truncateText(ctx, bottomLine, infoW), infoX, y);
+
+  // 右下角时间戳
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = `400 ${fontSizeSmall * 0.9}px 'JetBrains Mono', monospace`;
+  ctx.fillText('WORK RECORD', infoEndX, H - padding/2);
+}
+
+function drawLocationIcon(ctx, x, y, size){
+  ctx.save();
+  ctx.strokeStyle = '#0d9488';
+  ctx.fillStyle = '#0d9488';
+  ctx.lineWidth = size * 0.1;
+  ctx.beginPath();
+  ctx.arc(x + size*0.3, y + size*0.3, size*0.2, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + size*0.3, y + size*0.5);
+  ctx.lineTo(x + size*0.1, y + size*0.1);
+  ctx.lineTo(x + size*0.5, y + size*0.1);
+  ctx.closePath();
+  ctx.fillStyle = '#0d9488';
+  ctx.fill();
+  ctx.restore();
+}
+
+function formatCoord(val, dir){
+  const v = parseFloat(val);
+  if(isNaN(v)) return val;
+  const abs = Math.abs(v);
+  const d = Math.floor(abs);
+  const m = ((abs - d) * 60).toFixed(3);
+  return `${d}°${m}'${dir}`;
+}
+
+function truncateText(ctx, text, maxWidth){
+  if(ctx.measureText(text).width <= maxWidth) return text;
+  let truncated = text;
+  while(ctx.measureText(truncated + '...').width > maxWidth && truncated.length > 0){
+    truncated = truncated.slice(0, -1);
+  }
+  return truncated + '...';
+}
+
+/* ============= 保存 ============= */
+function saveImage(){
+  const canvas = document.getElementById('resultCanvas');
+  canvas.toBlob(blob => {
+    if(!blob){
+      showToast('保存失败', 'error');
+      return;
+    }
+
+    const filename = `WM_${Date.now()}.jpg`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+
+    // 尝试下载
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      // 检测是否在 iOS Safari（download 属性可能不生效）
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+      
+      if(isIOS && isSafari){
+        document.getElementById('saveTip').innerHTML = 
+          '请长按下方图片保存到相册<br><img src="' + canvas.toDataURL('image/jpeg', 0.92) + '" style="max-width:100%;border-radius:8px;margin-top:12px;">';
+      } else {
+        document.getElementById('saveTip').textContent = '图片已保存到下载文件夹';
+      }
+      document.getElementById('saveOverlay').classList.add('show');
+    }, 300);
+
+  }, 'image/jpeg', 0.92);
+}
+
+/* ============= 工具 ============= */
+function showToast(msg, type){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ============= 启动 ============= */
+window.addEventListener('load', init);
+
+// 防止页面意外滚动
+document.addEventListener('touchmove', e => {
+  if(e.target.closest('.edit-sheet') || e.target.closest('.preview-area')) return;
+  e.preventDefault();
+}, { passive: false });
+
 </script>
 </body>
 </html>
