@@ -43,20 +43,16 @@ body{
 }
 .mono{font-family:'JetBrains Mono',monospace}
 
-/* ===== 视图容器 ===== */
 .view{position:fixed;inset:0;display:none;flex-direction:column}
 .view.active{display:flex}
 
-/* ===== 相机视图 ===== */
+/* 相机视图 */
 #cameraView{background:#000;z-index:1}
 #cameraView .preview-container{
   flex:1;position:relative;overflow:hidden;
   display:flex;align-items:center;justify-content:center;
 }
-#cameraVideo{
-  width:100%;height:100%;object-fit:cover;
-  transform:scaleX(-1);
-}
+#cameraVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
 #cameraCanvas{display:none}
 
 .grid-overlay{
@@ -71,8 +67,7 @@ body{
   position:absolute;top:0;left:0;right:0;
   padding:calc(12px + var(--safe-top)) 16px 12px;
   background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);
-  display:flex;justify-content:space-between;align-items:center;
-  z-index:10;
+  display:flex;justify-content:space-between;align-items:center;z-index:10;
 }
 .top-info{display:flex;flex-direction:column;gap:2px}
 .top-time{color:#fff;font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:0.02em}
@@ -92,35 +87,25 @@ body{
 .top-btn:active{transform:scale(0.92);background:rgba(255,255,255,0.25)}
 
 .camera-bottombar{
-  background:#000;
-  padding:20px 20px calc(20px + var(--safe-bottom));
-  display:flex;align-items:center;justify-content:space-around;
-  z-index:10;
+  background:#000;padding:20px 20px calc(20px + var(--safe-bottom));
+  display:flex;align-items:center;justify-content:space-around;z-index:10;
 }
 .shutter-wrap{position:relative;display:flex;align-items:center;justify-content:center}
 .shutter{
   width:72px;height:72px;border-radius:50%;
   background:#fff;border:4px solid #fff;
   box-shadow:0 0 0 3px rgba(255,255,255,0.3);
-  cursor:pointer;transition:all 0.15s;
-  position:relative;
+  cursor:pointer;transition:all 0.15s;position:relative;
 }
-.shutter::after{
-  content:'';position:absolute;inset:4px;border-radius:50%;
-  background:#fff;transition:all 0.15s;
-}
+.shutter::after{content:'';position:absolute;inset:4px;border-radius:50%;background:#fff;transition:all 0.15s;}
 .shutter:active::after{background:#ddd;transform:scale(0.9)}
 
-.bottom-action{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;
-}
+.bottom-action{display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;}
 .bottom-action:active{color:#fff}
 .bottom-action .icon-circle{
   width:48px;height:48px;border-radius:50%;
   background:rgba(255,255,255,0.1);
-  display:flex;align-items:center;justify-content:center;
-  transition:all 0.15s;
+  display:flex;align-items:center;justify-content:center;transition:all 0.15s;
 }
 .bottom-action:active .icon-circle{background:rgba(255,255,255,0.2);transform:scale(0.92)}
 
@@ -142,146 +127,85 @@ body{
   font-family:inherit;cursor:pointer;margin-top:8px;
 }
 
-/* ===== 编辑视图 ===== */
+/* 编辑视图 */
 #editorView{background:var(--bg);z-index:2}
 .editor-header{
-  background:var(--surface);
-  padding:calc(12px + var(--safe-top)) 16px 12px;
+  background:var(--surface);padding:calc(12px + var(--safe-top)) 16px 12px;
   display:flex;align-items:center;justify-content:space-between;
-  border-bottom:1px solid var(--border);
-  box-shadow:var(--shadow);
+  border-bottom:1px solid var(--border);box-shadow:var(--shadow);
 }
 .editor-header h2{font-size:17px;font-weight:600}
-.header-btn{
-  padding:8px 16px;border:none;border-radius:8px;
-  font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;
-  transition:all 0.15s;
-}
+.header-btn{padding:8px 16px;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.15s;}
 .header-btn.back{background:transparent;color:var(--muted-hi)}
 .header-btn.back:active{color:var(--fg)}
 .header-btn.save{background:var(--accent);color:#fff}
 .header-btn.save:active{background:var(--accent-dark)}
 .header-btn.save:disabled{opacity:0.5}
 
-.preview-area{
-  flex:1;overflow:auto;padding:16px;
-  display:flex;flex-direction:column;align-items:center;gap:16px;
-}
-.preview-frame{
-  background:#fff;border-radius:12px;overflow:hidden;
-  box-shadow:var(--shadow-md);max-width:100%;
-  position:relative;
-}
+.preview-area{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.preview-frame{background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md);max-width:100%;position:relative;}
 .preview-frame canvas{display:block;max-width:100%;height:auto}
 
 .edit-sheet{
-  background:var(--surface);
-  border-radius:16px 16px 0 0;
+  background:var(--surface);border-radius:16px 16px 0 0;
   box-shadow:0 -4px 20px rgba(0,0,0,0.08);
   padding:16px 16px calc(20px + var(--safe-bottom));
   max-height:65vh;overflow-y:auto;
 }
-.sheet-handle{
-  width:36px;height:4px;background:var(--border-hi);
-  border-radius:2px;margin:0 auto 16px;
-}
-.sheet-title{
-  font-size:15px;font-weight:600;color:var(--fg);
-  margin-bottom:16px;display:flex;align-items:center;gap:8px;
-}
-.sheet-title::before{
-  content:'';width:3px;height:16px;background:var(--accent);
-  border-radius:2px;
-}
+.sheet-handle{width:36px;height:4px;background:var(--border-hi);border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:15px;font-weight:600;color:var(--fg);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.sheet-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px;}
 
 .field{margin-bottom:14px}
-.field-label{
-  font-size:12px;color:var(--muted-hi);font-weight:500;
-  margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;
-}
-.field-label .auto-tag{
-  font-size:10px;color:var(--accent);background:var(--accent-soft);
-  padding:2px 6px;border-radius:4px;
-}
+.field-label{font-size:12px;color:var(--muted-hi);font-weight:500;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+.field-label .auto-tag{font-size:10px;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:4px;}
 .input-row{display:flex;gap:8px;align-items:center}
 input[type="text"],input[type="number"],select,textarea{
-  width:100%;background:var(--surface-2);
-  border:1px solid var(--border);border-radius:8px;
-  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--fg);
-  outline:none;transition:all 0.15s;
+  width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--fg);outline:none;transition:all 0.15s;
 }
-input:focus,select:focus,textarea:focus{
-  border-color:var(--accent);background:#fff;
-  box-shadow:0 0 0 3px var(--accent-soft);
-}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft);}
 input[type="text"]{user-select:text;-webkit-user-select:text}
 .btn-inline{
-  padding:10px 14px;background:var(--surface-2);
-  border:1px solid var(--border);border-radius:8px;
-  font-family:inherit;font-size:13px;color:var(--fg-2);
-  cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;
+  padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  font-family:inherit;font-size:13px;color:var(--fg-2);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;
 }
 .btn-inline:active{background:var(--surface-3)}
 
 .field-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
-.device-picker{
-  display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;
-  margin:0 -4px;padding:0 4px 4px;
-  scrollbar-width:none;
-}
+.device-picker{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:0 -4px;padding:0 4px 4px;scrollbar-width:none;}
 .device-picker::-webkit-scrollbar{display:none}
 .device-chip{
-  padding:8px 14px;background:var(--surface-2);
-  border:1px solid var(--border);border-radius:20px;
-  font-size:12px;color:var(--muted-hi);white-space:nowrap;
-  cursor:pointer;transition:all 0.15s;
+  padding:8px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;
+  font-size:12px;color:var(--muted-hi);white-space:nowrap;cursor:pointer;transition:all 0.15s;
 }
 .device-chip:active{transform:scale(0.95)}
 .device-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
 
-/* Toast */
 .toast{
-  position:fixed;top:calc(60px + var(--safe-top));left:50%;
-  transform:translateX(-50%) translateY(-20px);
-  background:rgba(31,41,55,0.95);backdrop-filter:blur(12px);
-  color:#fff;padding:10px 20px;border-radius:24px;
-  font-size:13px;z-index:1000;opacity:0;
-  transition:all 0.3s;pointer-events:none;
-  box-shadow:var(--shadow-lg);max-width:90%;text-align:center;
+  position:fixed;top:calc(60px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-20px);
+  background:rgba(31,41,55,0.95);backdrop-filter:blur(12px);color:#fff;padding:10px 20px;border-radius:24px;
+  font-size:13px;z-index:1000;opacity:0;transition:all 0.3s;pointer-events:none;box-shadow:var(--shadow-lg);max-width:90%;text-align:center;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.error{background:rgba(239,68,68,0.95)}
 .toast.success{background:rgba(16,185,129,0.95)}
 
-/* 保存遮罩 */
 .save-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.85);
-  backdrop-filter:blur(8px);z-index:999;
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:999;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity 0.2s;
-  padding:20px;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;padding:20px;
 }
 .save-overlay.show{opacity:1;pointer-events:auto}
-.save-overlay .hint-text{
-  color:#fff;font-size:16px;margin-bottom:20px;text-align:center;font-weight:500;
-}
-.save-overlay .hint-sub{
-  color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:24px;text-align:center;
-}
-.save-preview-img{
-  max-width:80%;max-height:50vh;border-radius:8px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.5);
-}
+.save-overlay .hint-text{color:#fff;font-size:16px;margin-bottom:20px;text-align:center;font-weight:500;}
+.save-overlay .hint-sub{color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:24px;text-align:center;}
+.save-preview-img{max-width:80%;max-height:50vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
 .save-actions{margin-top:32px;display:flex;gap:12px}
-.save-actions button{
-  padding:12px 24px;border-radius:24px;border:none;
-  font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
-}
+.save-actions button{padding:12px 24px;border-radius:24px;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
 .btn-secondary{background:rgba(255,255,255,0.15);color:#fff}
 .btn-primary{background:var(--accent);color:#fff}
 
-/* 图标 */
 .icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .icon-sm{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
@@ -297,7 +221,6 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 </head>
 <body>
 
-<!-- ===== 相机视图 ===== -->
 <div class="view active" id="cameraView">
   <div class="preview-container">
     <video id="cameraVideo" autoplay playsinline muted></video>
@@ -353,7 +276,6 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
   </div>
 </div>
 
-<!-- ===== 编辑视图 ===== -->
 <div class="view" id="editorView">
   <div class="editor-header">
     <button class="header-btn back" id="editorBackBtn">返回</button>
@@ -377,6 +299,17 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
     </div>
 
     <div class="field">
+      <div class="field-label"><span>照片类型</span></div>
+      <div class="device-picker" id="typePicker">
+        <div class="device-chip active" data-type="现场核查">现场核查</div>
+        <div class="device-chip" data-type="进度汇报">进度汇报</div>
+        <div class="device-chip" data-type="问题记录">问题记录</div>
+        <div class="device-chip" data-type="竣工验收">竣工验收</div>
+      </div>
+      <input type="text" id="inputType" value="现场核查" placeholder="如：现场核查" style="margin-top:8px;">
+    </div>
+
+    <div class="field">
       <div class="field-label">
         <span>拍摄地点</span>
         <button class="btn-inline" id="refreshLocBtn" style="font-size:11px;padding:4px 10px;">
@@ -384,7 +317,7 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
           重新定位
         </button>
       </div>
-      <input type="text" id="inputLocation" placeholder="请输入地点">
+      <input type="text" id="inputLocation" placeholder="请输入详细地点">
     </div>
 
     <div class="field">
@@ -403,15 +336,13 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 
     <div class="field">
       <div class="field-label"><span>备注信息（选填）</span></div>
-      <input type="text" id="inputNote" placeholder="如：施工现场巡查">
+      <input type="text" id="inputNote" placeholder="如：施工区域A">
     </div>
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- 保存遮罩(长按备用) -->
 <div class="save-overlay" id="saveOverlay">
   <div class="hint-text">长按下方图片保存到相册</div>
   <div class="hint-sub">若系统未弹出保存选项，请使用此方式保存</div>
@@ -434,15 +365,16 @@ const state = {
   locationReady: false,
   device: { brand: '', model: '' },
   currentDeviceChip: '',
+  currentTypeChip: '现场核查',
   lastBlob: null,
 };
 
 const deviceModels = {
-  apple: ['iPhone 15 Pro Max','iPhone 15 Pro','iPhone 15','iPhone 14 Pro Max','iPhone 14 Pro','iPhone 14','iPhone 13 Pro','iPhone 13','iPhone 12 Pro'],
-  huawei: ['华为 Mate 60 Pro','华为 Mate 60','华为 P60 Pro','华为 P60','华为 Mate 50 Pro'],
-  xiaomi: ['小米 14 Pro','小米 14','小米 13 Pro','Redmi K70'],
-  vivo: ['vivo X100','vivo X90','vivo S18'],
-  oppo: ['OPPO Find X7','OPPO Find X6','OPPO Reno 11'],
+  apple: ['iPhone 13 Pro','iPhone 15 Pro Max','iPhone 15 Pro','iPhone 14 Pro Max','iPhone 14 Pro','iPhone 12 Pro'],
+  huawei: ['华为 Mate 60 Pro','华为 P60 Pro','华为 Mate 50 Pro'],
+  xiaomi: ['小米 14 Pro','小米 13 Pro','Redmi K70'],
+  vivo: ['vivo X100','vivo X90'],
+  oppo: ['OPPO Find X7','OPPO Find X6'],
 };
 
 function init(){
@@ -455,23 +387,33 @@ function init(){
 
 function detectDevice(){
   const ua = navigator.userAgent;
-  let brand = 'other';
-  let model = '';
+  let brand = 'apple'; // 默认认为是 apple
+  let model = 'iPhone 13 Pro'; // 默认填 iPhone 13 Pro
+
   if(/iPhone|iPad|iPod/i.test(ua)){
     brand = 'apple';
+    // 尝试通过屏幕分辨率推断，如果推断不出就保持 iPhone 13 Pro
     const w = screen.width * (window.devicePixelRatio || 1);
     const h = screen.height * (window.devicePixelRatio || 1);
     const res = `${Math.max(w,h)}x${Math.min(w,h)}`;
-    const appleMap = { '2796x1290':'iPhone 15 Pro Max', '2778x1284':'iPhone 14 Pro Max', '2532x1170':'iPhone 15 Pro' };
-    model = appleMap[res] || 'iPhone';
+    const appleMap = { 
+      '2796x1290':'iPhone 15 Pro Max', 
+      '2778x1284':'iPhone 14 Pro Max', 
+      '2532x1170':'iPhone 15 Pro', 
+      '2532x1170':'iPhone 14 Pro', 
+      '1170x2532':'iPhone 13 Pro' // 简单兼容
+    };
+    if(appleMap[res]) model = appleMap[res];
   } else if(/Android/i.test(ua)){
     if(/Huawei|HONOR/i.test(ua)) brand = 'huawei';
     else if(/Xiaomi|Redmi/i.test(ua)) brand = 'xiaomi';
     else if(/vivo/i.test(ua)) brand = 'vivo';
     else if(/OPPO|oppo/i.test(ua)) brand = 'oppo';
+    // 尝试提取型号
     const m = ua.match(/;\s*([a-zA-Z0-9\-_]+)\s*Build/);
     if(m) model = m[1];
   }
+  
   state.device = { brand, model };
 }
 
@@ -483,12 +425,19 @@ function renderDevicePicker(){
   });
   picker.innerHTML = html;
 
-  const defaultModel = state.device.model || deviceModels[state.device.brand]?.[0] || 'iPhone 15 Pro';
-  const defaultChip = [...picker.querySelectorAll('.device-chip')].find(c => c.dataset.device === defaultModel);
+  const defaultChip = [...picker.querySelectorAll('.device-chip')].find(c => c.dataset.device === state.device.model);
   if(defaultChip){
     defaultChip.classList.add('active');
-    state.currentDeviceChip = defaultModel;
-    document.getElementById('inputDevice').value = defaultModel;
+    state.currentDeviceChip = state.device.model;
+    document.getElementById('inputDevice').value = state.device.model;
+  } else {
+    // 如果没有匹配的芯片，默认选中第一个 (iPhone 13 Pro)
+    const firstChip = picker.querySelector('.device-chip');
+    if(firstChip){
+      firstChip.classList.add('active');
+      state.currentDeviceChip = firstChip.dataset.device;
+      document.getElementById('inputDevice').value = state.currentDeviceChip;
+    }
   }
 
   picker.querySelectorAll('.device-chip').forEach(chip => {
@@ -499,6 +448,22 @@ function renderDevicePicker(){
       document.getElementById('inputDevice').value = chip.dataset.device;
       drawResult();
     });
+  });
+
+  // 照片类型选择器
+  const typePicker = document.getElementById('typePicker');
+  typePicker.querySelectorAll('.device-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      typePicker.querySelectorAll('.device-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.currentTypeChip = chip.dataset.type;
+      document.getElementById('inputType').value = chip.dataset.type;
+      drawResult();
+    });
+  });
+  document.getElementById('inputType').addEventListener('input', e => {
+    typePicker.querySelectorAll('.device-chip').forEach(c => c.classList.remove('active'));
+    drawResult();
   });
 }
 
@@ -524,7 +489,7 @@ function bindEvents(){
   
   document.getElementById('editorSaveBtn').addEventListener('click', saveImage);
 
-  ['inputTime','inputLocation','inputLat','inputLng','inputDevice','inputNote'].forEach(id => {
+  ['inputTime','inputType','inputLocation','inputLat','inputLng','inputDevice','inputNote'].forEach(id => {
     document.getElementById(id).addEventListener('input', drawResult);
   });
 
@@ -646,8 +611,17 @@ async function reverseGeocode(lat, lng){
   try {
     const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`);
     const data = await res.json();
-    if(data && data.city){
-      const parts = [data.principalSubdivision, data.city, data.locality, data.thoroughfare].filter(Boolean);
+    if(data){
+      // 拼接尽可能详细的地址
+      const parts = [
+        data.principalSubdivision, // 省
+        data.city,                 // 市
+        data.locality,             // 区/县
+        data.thoroughfare,         // 街道/道路
+        data.subThoroughfare,      // 门牌号
+        data.premise               // 建筑物/小区
+      ].filter(Boolean);
+      
       const address = parts.join('·') || '未知地点';
       state.geo.address = address;
       document.getElementById('inputLocation').value = address;
@@ -668,9 +642,7 @@ function enterEditor(){
     document.getElementById('inputLng').value = state.geo.lng;
   }
   if(state.geo.address) document.getElementById('inputLocation').value = state.geo.address;
-  if(!document.getElementById('inputDevice').value){
-    document.getElementById('inputDevice').value = state.currentDeviceChip || 'iPhone 15 Pro';
-  }
+  
   drawResult();
 }
 
@@ -694,7 +666,6 @@ function switchView(viewId){
   }
 }
 
-/* ===== 核心：绘制白框水印 ===== */
 function drawResult(){
   if(!state.capturedImage) return;
   const canvas = document.getElementById('resultCanvas');
@@ -704,66 +675,67 @@ function drawResult(){
   const W = img.naturalWidth;
   const H = img.naturalHeight;
 
-  // 1. 计算边框尺寸 (保证大图小图比例协调)
   const baseSize = Math.min(W, H);
-  const sideBorder = Math.max(baseSize * 0.035, 20); // 左右边框
-  const topBorder = Math.max(baseSize * 0.035, 20);  // 上边框
-  const bottomBorder = Math.max(baseSize * 0.18, 110); // 下边框(信息区)
+  const sideBorder = Math.max(baseSize * 0.035, 20); 
+  const topBorder = Math.max(baseSize * 0.035, 20);  
+  // 1. 加粗下方白条 (从 0.18 提升到 0.25)
+  const bottomBorder = Math.max(baseSize * 0.25, 150); 
 
-  // 2. 设置新画布尺寸
   canvas.width = W + sideBorder * 2;
   canvas.height = H + topBorder + bottomBorder;
 
-  // 3. 填充白底并绘制原图
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, sideBorder, topBorder, W, H);
 
-  // 4. 绘制水印信息
   drawWatermarkText(ctx, canvas.width, canvas.height, W, H, sideBorder, topBorder, bottomBorder);
 }
 
 function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB) {
   const time = document.getElementById('inputTime').value || formatTime(new Date());
+  const type = document.getElementById('inputType').value || '现场核查';
   const location = document.getElementById('inputLocation').value || '未填写地点';
   const lat = document.getElementById('inputLat').value;
   const lng = document.getElementById('inputLng').value;
-  const device = document.getElementById('inputDevice').value || '未知设备';
+  const device = document.getElementById('inputDevice').value || 'iPhone 13 Pro';
   const note = document.getElementById('inputNote').value;
 
   const padding = sideB * 0.8;
   const textAreaY = topB + imgH;
   const textAreaH = bottomB;
 
-  // 字号自适应
   const baseFont = Math.max(imgW * 0.022, 12);
-  const timeFont = baseFont * 1.4;
+  const timeFont = baseFont * 1.5;
   const infoFont = baseFont * 1.0;
   const smallFont = baseFont * 0.85;
 
-  // ===== 左侧主信息 (时间 + 地点) =====
   const leftX = sideB + padding;
   const rightX = sideB + imgW - padding;
   const splitLineX = sideB + imgW * 0.62;
 
-  // 第一行：时间 (大号粗体)
+  // 左侧第一行：时间
   ctx.fillStyle = '#000000';
   ctx.font = `700 ${timeFont}px 'JetBrains Mono', monospace`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText(time, leftX, textAreaY + padding * 0.8);
 
-  // 第二行：地点 + 备注
+  // 左侧第二行：地点
   ctx.fillStyle = '#374151';
   ctx.font = `500 ${infoFont}px 'Noto Sans SC', sans-serif`;
-  let locText = location;
-  if(note) locText += `  ${note}`;
-  // 截断处理
   let maxLeftW = splitLineX - leftX - padding;
-  locText = truncateText(ctx, locText, maxLeftW);
-  ctx.fillText(locText, leftX, textAreaY + padding * 0.8 + timeFont * 1.4);
+  let locText = truncateText(ctx, location, maxLeftW);
+  ctx.fillText(locText, leftX, textAreaY + padding * 0.8 + timeFont * 1.5);
 
-  // ===== 中间分割线 =====
+  // 4. 新增左侧第三行：照片类型 + 备注
+  ctx.fillStyle = '#6b7280';
+  ctx.font = `400 ${infoFont}px 'Noto Sans SC', sans-serif`;
+  let typeText = type;
+  if(note) typeText += `  ${note}`;
+  typeText = truncateText(ctx, typeText, maxLeftW);
+  ctx.fillText(typeText, leftX, textAreaY + padding * 0.8 + timeFont * 1.5 + infoFont * 1.8);
+
+  // 中间分割线
   ctx.strokeStyle = '#d1d5db';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -771,16 +743,14 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB) {
   ctx.lineTo(splitLineX, textAreaY + textAreaH - padding);
   ctx.stroke();
 
-  // ===== 右侧辅助信息 (经纬度 + 设备) =====
-  ctx.textAlign = 'right';
-
-  // 第一行：设备
+  // 右侧第一行：设备
   ctx.fillStyle = '#374151';
   ctx.font = `600 ${infoFont}px 'Noto Sans SC', sans-serif`;
+  ctx.textAlign = 'right';
   let devText = truncateText(ctx, device, rightX - splitLineX - padding);
   ctx.fillText(devText, rightX, textAreaY + padding * 0.8);
 
-  // 第二行：经纬度
+  // 右侧第二行：经纬度
   ctx.fillStyle = '#6b7280';
   ctx.font = `400 ${smallFont}px 'JetBrains Mono', monospace`;
   let coordText = '';
@@ -788,7 +758,7 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB) {
     coordText = `${formatCoord(lat, 'N')} ${formatCoord(lng, 'E')}`;
   }
   if(coordText) {
-    ctx.fillText(coordText, rightX, textAreaY + padding * 0.8 + timeFont * 1.4);
+    ctx.fillText(coordText, rightX, textAreaY + padding * 0.8 + timeFont * 1.5);
   }
 }
 
@@ -810,7 +780,6 @@ function formatCoord(val, dir){
   return `${d}°${m}'${dir}`;
 }
 
-/* ===== 保存逻辑 (系统分享优先) ===== */
 function saveImage(){
   const canvas = document.getElementById('resultCanvas');
   canvas.toBlob(blob => {
