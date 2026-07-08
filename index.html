@@ -5,310 +5,440 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#ffffff">
-<title>工作水印相机</title>
+<meta name="theme-color" content="#F7F7F9">
+<title>工作水印相机 v1.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#f2f3f5;
-  --surface:#ffffff;
-  --surface-2:#f8f9fa;
-  --surface-3:#f1f3f5;
-  --border:#e5e7eb;
-  --fg:#1f2937;
-  --fg-2:#374151;
-  --fg-3:#6b7280;
-  --muted:#9ca3af;
-  --accent:#2563eb;
-  --accent-hi:#3b82f6;
-  --accent-soft:rgba(37,99,235,0.08);
-  --danger:#ef4444;
-  --shadow-sm:0 1px 2px 0 rgba(0,0,0,0.05);
-  --shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-  --safe-top:env(safe-area-inset-top,0px);
-  --safe-bottom:env(safe-area-inset-bottom,0px);
+/* ================= 全局变量 (融合阅读器美学) ================= */
+:root {
+  /* 基础色调：模仿阅读器的 "暖灰纸" 背景基调 */
+  --bg-app: #F7F7F9; 
+  --bg-surface: #FFFFFF;
+  
+  /* 文本颜色 */
+  --text-main: #1D1D1F;
+  --text-sub: #86868B;
+  --text-label: #86868B;
+  
+  /* 强调色 */
+  --accent: #007AFF; /* iOS 风格蓝 */
+  --accent-text: #FFFFFF;
+  --accent-bg: rgba(0, 122, 255, 0.08);
+  
+  /* 边框与阴影 */
+  --border-light: rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.08);
+  
+  /* 布局 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --max-width: 640px; /* 阅读器风格的内容最大宽度 */
+  --header-h: 56px;
 }
 
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
-body{
-  font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif;
-  background:var(--bg);color:var(--fg);
-  -webkit-font-smoothing:antialiased;
-  user-select:none;-webkit-user-select:none;
+/* 字体栈：优先使用系统优质字体 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-main);
 }
-.mono{font-family:'JetBrains Mono',monospace}
 
-.view{position:fixed;inset:0;display:none;flex-direction:column}
-.view.active{display:flex}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg-app); }
 
-/* ================= 拍摄页 ================= */
-#cameraView{background:#000;z-index:1}
-#cameraView .preview-container{
-  flex:1;position:relative;overflow:hidden;
-  display:flex;align-items:center;justify-content:center;
+.view { position: fixed; inset: 0; display: none; flex-direction: column; z-index: 1; }
+.view.active { display: flex; }
+
+/* ================= 拍摄页 (保持原有核心逻辑，微调UI) ================= */
+#cameraView { 
+  background: #000; 
+  z-index: 10; 
 }
-#cameraVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
-#cameraCanvas{display:none}
 
-.grid-overlay{
-  position:absolute;inset:0;pointer-events:none;
+#cameraView .preview-container {
+  flex: 1; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#cameraVideo { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+#cameraCanvas { display: none; }
+
+.grid-overlay {
+  position: absolute; inset: 0; pointer-events: none;
   background-image:
     linear-gradient(to right,rgba(255,255,255,0.15) 1px,transparent 1px),
     linear-gradient(to bottom,rgba(255,255,255,0.15) 1px,transparent 1px);
   background-size:33.33% 33.33%;
 }
 
-.camera-topbar{
-  position:absolute;top:0;left:0;right:0;
-  padding:calc(12px + var(--safe-top)) 16px 12px;
-  background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);
-  display:flex;justify-content:space-between;align-items:center;
-  z-index:10;
-}
-.top-info{display:flex;flex-direction:column;gap:2px;min-width: 0;}
-.top-time{color:#fff;font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:0.02em}
-.top-loc{color:rgba(255,255,255,0.8);font-size:11px;display:flex;align-items:center;gap:4px; cursor: pointer; transition: opacity 0.2s; padding: 2px 0;}
-.top-loc:active{opacity: 0.6;}
-.top-loc.waiting{color:rgba(255,255,255,0.5)}
-.loc-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-hi);animation:pulse 1.5s infinite}
-.loc-dot.fixed{background:#10b981;animation:none}
-@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
-
-.camera-topbtns{display:flex;gap:8px}
-.top-btn{
-  width:36px;height:36px;border-radius:50%;
-  background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);
-  border:none;color:#fff;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:all 0.15s;
-}
-.top-btn:active{transform:scale(0.92);background:rgba(255,255,255,0.25)}
-
-.camera-bottombar{
-  background:#000;padding:20px 20px calc(20px + var(--safe-bottom));
-  display:flex;align-items:center;justify-content:space-around;z-index:10;
-}
-.shutter-wrap{position:relative;display:flex;align-items:center;justify-content:center}
-.shutter{
-  width:72px;height:72px;border-radius:50%;
-  background:#fff;border:4px solid #fff;
-  box-shadow:0 0 0 3px rgba(255,255,255,0.3);
-  cursor:pointer;transition:all 0.15s;position:relative;
-}
-.shutter::after{content:'';position:absolute;inset:4px;border-radius:50%;background:#fff;transition:all 0.15s;}
-.shutter:active::after{background:#ddd;transform:scale(0.9)}
-
-.bottom-action{display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;}
-.bottom-action:active{color:#fff}
-.bottom-action .icon-circle{
-  width:48px;height:48px;border-radius:50%;
-  background:rgba(255,255,255,0.1);
-  display:flex;align-items:center;justify-content:center;transition:all 0.15s;
-}
-.bottom-action:active .icon-circle{background:rgba(255,255,255,0.2);transform:scale(0.92)}
-
-.flash{position:absolute;inset:0;background:#fff;z-index:100;opacity:0;pointer-events:none}
-.flash.active{animation:flashAnim 0.4s ease-out}
-@keyframes flashAnim{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
-
-.permission-prompt{
-  position:absolute;inset:0;background:#000;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;padding:40px;text-align:center;z-index:50;
-}
-.permission-prompt svg{color:var(--muted)}
-.permission-prompt h3{color:#fff;font-size:18px;font-weight:600}
-.permission-prompt p{color:var(--muted);font-size:13px;line-height:1.6;max-width:280px}
-.permission-btn{
-  padding:12px 32px;background:var(--accent);color:#fff;
-  border:none;border-radius:24px;font-size:15px;font-weight:600;
-  font-family:inherit;cursor:pointer;margin-top:8px;
-}
-
-/* ================= 编辑页 ================= */
-#editorView{background:var(--bg);z-index:2}
-
-/* 1. 顶部全局功能区 */
-.global-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.camera-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
   padding: calc(12px + var(--safe-top)) 16px 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  height: 56px;
-  z-index: 10;
+  background: linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);
+  display: flex; justify-content: space-between; align-items: center;
+  z-index: 20;
 }
-.header-btn {
-  background: none; border: none; font-family: inherit; font-size: 16px;
-  color: var(--fg-2); cursor: pointer; padding: 8px 12px; display: flex; align-items: center; gap: 4px;
-  transition: color 0.2s;
-}
-.header-btn:active{opacity: 0.6}
-.header-btn.save { color: var(--accent); font-weight: 600; }
 
-/* 通用板块样式 */
-.section-block {
-  background: var(--surface);
-  margin-bottom: 8px;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
+.top-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.top-time { color:#fff; font-size:15px; font-weight:600; font-family:'JetBrains Mono',monospace; letter-spacing:0.02em }
+.top-loc { color:rgba(255,255,255,0.8); font-size:11px; display:flex; align-items:center; gap:4px; cursor: pointer; transition: opacity 0.2s; padding: 2px 0; }
+.top-loc:active { opacity: 0.6; }
+.top-loc.waiting { color:rgba(255,255,255,0.5) }
+.loc-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.5s infinite }
+.loc-dot.fixed { background:#10b981; animation:none }
+
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+.camera-topbtns { display: flex; gap: 8px; }
+.top-btn {
+  width:36px; height:36px; border-radius:50%;
+  background:rgba(255,255,255,0.15); backdrop-filter:blur(12px);
+  border:none; color:#fff; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all 0.15s;
 }
-.section-header {
+.top-btn:active { transform:scale(0.92); background:rgba(255,255,255,0.25); }
+
+.camera-bottombar {
+  background:#000; padding:20px 20px calc(20px + var(--safe-bottom));
+  display:flex; align-items:center; justify-content:space-around; z-index: 20;
+}
+
+.shutter-wrap { position:relative; display:flex; align-items:center; justify-content:center; }
+.shutter {
+  width:72px; height:72px; border-radius:50%;
+  background:#fff; border:4px solid #fff;
+  box-shadow:0 0 0 3px rgba(255,255,255,0.3);
+  cursor:pointer; transition:all 0.15s; position:relative;
+}
+.shutter::after { content:''; position:absolute; inset:4px; border-radius:50%; background:#fff; transition:all 0.15s; }
+.shutter:active::after { background:#ddd; transform:scale(0.9); }
+
+.bottom-action { display:flex; flex-direction:column; align-items:center; gap:6px; color:rgba(255,255,255,0.8); font-size:11px; cursor:pointer; }
+.bottom-action:active { color:#fff; }
+.bottom-action .icon-circle {
+  width:48px; height:48px; border-radius:50%;
+  background:rgba(255,255,255,0.1);
+  display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+}
+.bottom-action:active .icon-circle { background:rgba(255,255,255,0.2); transform:scale(0.92); }
+
+.flash { position:absolute; inset:0; background:#fff; z-index:100; opacity:0; pointer-events:none; }
+.flash.active { animation:flashAnim 0.4s ease-out; }
+@keyframes flashAnim { 0%{opacity:0} 15%{opacity:1} 100%{opacity:0} }
+
+.permission-prompt {
+  position:absolute; inset:0; background:#000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; padding:40px; text-align:center; z-index:50;
+}
+.permission-prompt svg { color:var(--text-sub); }
+.permission-prompt h3 { color:#fff; font-size:18px; font-weight:600; }
+.permission-prompt p { color:var(--text-sub); font-size:13px; line-height:1.6; max-width:280px; }
+.permission-btn {
+  padding:12px 32px; background:var(--accent); color:#fff;
+  border:none; border-radius:24px; font-size:15px; font-weight:600;
+  font-family:inherit; cursor:pointer; margin-top:8px;
+}
+
+/* ================= 编辑页 (全新设计) ================= */
+#editorView {
+  background: var(--bg-app);
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 1. 毛玻璃头部 */
+.global-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: calc(var(--header-h) + var(--safe-top));
+  padding-top: var(--safe-top);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  z-index: 5;
-}
-.section-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--fg-2);
-  display: flex;
-  align-items: center;
-}
-.section-title::before {
-  content: '';
-  width: 3px;
-  height: 14px;
-  background: var(--accent);
-  border-radius: 2px;
-  margin-right: 8px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: rgba(247, 247, 249, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 0.5px solid var(--border-light);
+  z-index: 100;
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1);
 }
 
-/* 第一部分：预览 */
-.preview-content-wrapper {
-  background: #e5e7eb;
-  width: 100%;
-  overflow: hidden;
-  transition: height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), padding 0.3s;
-  position: relative;
-}
-/* 折叠状态样式：确保不留空隙 */
-.preview-content-wrapper.collapsed {
-  height: 0 !important;
-  padding: 0 !important;
-}
-
-.preview-frame{
-  width: 100%;
-  height: 100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow: hidden;
-  padding: 16px;
-}
-.preview-frame canvas{
-  max-height:100%;
-  max-width:100%;
-  width:auto;
-  height:auto;
-  box-shadow:var(--shadow);
-  border-radius:8px;
-  object-fit: contain;
-  background:#fff;
-}
-.section-toggle-btn {
+.header-btn {
   background: none; border: none;
+  font-size: 16px; font-weight: 500;
   color: var(--accent);
+  padding: 8px 12px;
   cursor: pointer;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: opacity 0.2s;
+  display: flex; align-items: center; gap: 4px;
 }
-.section-toggle-btn svg { width: 20px; height: 20px; transition: transform 0.3s; }
-.section-toggle-btn.collapsed svg { transform: rotate(180deg); }
+.header-btn:active { opacity: 0.5; }
+.header-btn.save { font-weight: 600; }
 
-/* 第二部分：拍摄信息 */
-.info-content {
-  flex: 1;
-  min-height: 0;
-  background: var(--surface);
+/* 2. 滚动内容容器 */
+.scroll-content {
+  height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0 0 calc(20px + var(--safe-bottom));
-  margin-bottom: 0;
+  padding-top: calc(var(--header-h) + var(--safe-top) + 10px);
+  padding-bottom: calc(40px + var(--safe-bottom));
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.scroll-content::-webkit-scrollbar { display: none; }
+
+/* 3. 照片预览卡片 */
+.preview-card {
+  background: var(--bg-surface);
+  border-radius: 20px;
+  padding: 12px;
+  box-shadow: var(--shadow-float);
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  transition: all 0.4s cubic-bezier(.4,0,.2,1);
+  transform-origin: top center;
+}
+
+.preview-card.collapsed {
+  padding: 0;
+  margin-bottom: 12px;
+  border: none;
   box-shadow: none;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  margin-top: 8px;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preview-frame {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eee;
+  position: relative;
+  min-height: 200px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.preview-frame canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 折叠/展开按钮 */
+.toggle-bar {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  z-index: 10;
+  position: relative;
+}
+
+.toggle-icon {
+  width: 36px; height: 4px;
+  background: #D1D1D6;
+  border-radius: 2px;
+  transition: transform 0.4s cubic-bezier(.4,0,.2,1), background 0.3s;
+}
+.toggle-bar:active .toggle-icon { background: var(--text-sub); }
+.toggle-bar.collapsed .toggle-icon { transform: rotate(180deg); background: var(--accent); }
+
+/* 4. 表单组 - 卡片风格 */
+.form-group {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  padding: 4px 0;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 24px;
+  border: 1px solid var(--border-light);
+}
+
+.form-header {
+  padding: 16px 20px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.field {
+  padding: 12px 20px;
+  border-bottom: 0.5px solid var(--border-light);
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  transition: background 0.2s;
+}
+.field:last-child { border-bottom: none; }
+.field:active { background: rgba(0,0,0,0.01); }
+
+.field-label {
+  font-size: 12px;
+  color: var(--text-label);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.field{padding: 16px 16px 8px; border-bottom: 1px solid var(--surface-2);}
-.field:last-child{border-bottom: none;}
-.field-label{font-size:12px;color:var(--fg-3);font-weight:500;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
-.field-label .auto-tag{font-size:10px;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:10px;}
-
-/* 输入框 */
-input[type="text"],input[type="number"],textarea{
-  width:100%;background:var(--bg);border:1px solid transparent;border-radius:8px;
-  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--fg);outline:none;transition:all 0.2s;
+.auto-tag {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+  border: 1px solid rgba(0,122,255,0.1);
 }
-input:focus,textarea:focus{
-  background:var(--surface);
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
+
+/* 输入控件样式优化 */
+input[type="text"], input[type="number"], textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: var(--text-main);
+  font-family: inherit;
+  outline: none;
+  padding: 0;
+  resize: none;
+  line-height: 1.5;
 }
-textarea{resize:none;line-height:1.5;height: 60px;}
+input::placeholder, textarea::placeholder { color: #C7C7CC; }
 
-.btn-inline{
-  padding:4px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
-  font-family:inherit;font-size:11px;color:var(--fg-2);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;
+/* 网格布局 */
+.field-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
-.btn-inline:active{background:var(--surface-3)}
 
-.field-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
-.type-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
-.type-chip{
-  padding:6px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:16px;
-  font-size:12px;color:var(--fg-2);cursor:pointer;transition:all 0.2s;
+/* 5. 类型选择器 */
+.type-chips {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 0 4px;
 }
-.type-chip:active{transform:scale(0.96)}
-.type-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;}
 
-/* Toast 居中显示 */
-.toast{
-  position:fixed;top:50%;left:50%;transform:translate(-50%, -50%) translateY(20px);
-  background:rgba(31,41,55,0.95);backdrop-filter:blur(12px);color:#fff;padding:12px 24px;border-radius:24px;
-  font-size:14px;z-index:1000;opacity:0;transition:all 0.3s;pointer-events:none;box-shadow:var(--shadow);max-width:80%;text-align:center;
+.type-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-sub);
+  background: var(--bg-app);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(.4,0,.2,1);
 }
-.toast.show{opacity:1;transform:translate(-50%, -50%) translateY(0)}
-.toast.error{background:rgba(239,68,68,0.95)}
-.toast.success{background:rgba(16,185,129,0.95)}
-
-.save-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:999;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity 0.2s;padding:20px;
+.type-chip:active { transform: scale(0.95); }
+.type-chip.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
-.save-overlay.show{opacity:1;pointer-events:auto}
-.save-overlay .hint-text{color:#fff;font-size:16px;margin-bottom:20px;text-align:center;font-weight:500;}
-.save-overlay .hint-sub{color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:24px;text-align:center;}
-.save-preview-img{max-width:80%;max-height:50vh;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
-.save-actions{margin-top:32px;display:flex;gap:12px; flex-direction: column; width: 80%; max-width: 300px;}
-.save-actions button{padding:14px 24px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer; width: 100%;}
-.btn-secondary{background:rgba(255,255,255,0.15);color:#fff}
-.btn-primary{background:var(--accent);color:#fff}
 
-.icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.icon-sm{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* 6. 次级按钮样式 */
+.btn-text {
+  font-size: 13px;
+  color: var(--accent);
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  padding: 4px 8px; margin: -4px -8px;
+  border-radius: 6px;
+}
+.btn-text:active { background: var(--accent-bg); }
 
-@media(min-width:600px){
-  #cameraView .preview-container{max-width:420px;margin:0 auto}
-  .camera-bottombar{max-width:420px;margin:0 auto}
-  .camera-topbar{max-width:420px;margin:0 auto;left:50%;transform:translateX(-50%);right:auto;width:100%}
-  .section-block{max-width:600px;margin: 8px auto; border-radius: 12px;}
+/* 错误提示 */
+.loc-error {
+  font-size: 12px;
+  color: #FF3B30;
+  margin-top: 4px;
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* Toast */
+.toast {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background: rgba(30, 30, 30, 0.88);
+  backdrop-filter: blur(12px);
+  color: #fff; padding: 14px 24px;
+  border-radius: 14px;
+  font-size: 15px; font-weight: 500;
+  opacity: 0; pointer-events: none;
+  transition: all 0.3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+  text-align: center; max-width: 80%;
+  z-index: 2000;
+}
+.toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.toast.error { background: rgba(255, 59, 48, 0.9); }
+.toast.success { background: rgba(52, 199, 89, 0.9); }
+
+/* 保存浮层 */
+.save-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.save-overlay.show { opacity: 1; pointer-events: auto; }
+
+.save-card {
+  background: var(--bg-surface);
+  width: 85%; max-width: 320px;
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  transform: translateY(20px);
+  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.save-overlay.show .save-card { transform: translateY(0); }
+
+.save-preview-img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-light);
+}
+
+.save-actions { display: flex; gap: 12px; flex-direction: column; }
+.btn-primary, .btn-secondary {
+  height: 48px; border-radius: 12px; font-size: 16px; font-weight: 600;
+  border: none; cursor: pointer; width: 100%;
+  transition: transform 0.1s;
+}
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
+.btn-secondary { background: var(--bg-app); color: var(--text-main); }
+.btn-primary:active, .btn-secondary:active { transform: scale(0.98); }
+
+/* 通用图标 */
+.icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon-sm { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+@media(min-width: 600px){
+  #cameraView .preview-container{ max-width: 420px; margin: 0 auto; }
+  .camera-bottombar{ max-width: 420px; margin: 0 auto; }
+  .camera-topbar{ max-width: 420px; margin: 0 auto; left: 50%; transform: translateX(-50%); right: auto; width: 100%; }
 }
 </style>
 </head>
@@ -370,89 +500,121 @@ textarea{resize:none;line-height:1.5;height: 60px;}
 </div>
 
 <div class="view" id="editorView">
-  <div class="global-header">
-    <button class="header-btn back" id="editorBackBtn">返回</button>
-    <button class="header-btn save" id="editorSaveBtn">保存</button>
-  </div>
+  <!-- 1. 全局头部 (毛玻璃) -->
+  <header class="global-header">
+    <button class="header-btn back" id="editorBackBtn">
+      <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>返回</span>
+    </button>
+    <div style="font-size: 17px; font-weight: 600;">编辑水印</div>
+    <button class="header-btn save" id="editorSaveBtn">完成</button>
+  </header>
 
-  <div class="section-block">
-    <div class="section-header">
-      <div class="section-title">照片预览</div>
-      <button class="section-toggle-btn" id="previewToggleBtn" title="收起/展开预览" aria-label="收起或展开预览">
-        <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
+  <!-- 2. 滚动内容区 -->
+  <div class="scroll-content">
+    
+    <!-- 预览切换条 -->
+    <div class="toggle-bar" id="previewToggleBtn" title="点击展开/收起预览">
+      <div class="toggle-icon" id="toggleIcon"></div>
     </div>
-    <div class="preview-content-wrapper" id="previewContent">
+
+    <!-- 照片预览 (卡片) -->
+    <div class="preview-card" id="previewCard">
       <div class="preview-frame">
         <canvas id="resultCanvas"></canvas>
       </div>
     </div>
-  </div>
 
-  <div class="section-block info-content">
-    <div class="section-header" style="position:sticky; top:0; z-index:2; background:var(--surface);">
-      <div class="section-title">拍摄信息</div>
-    </div>
-
-    <div class="field">
-      <div class="field-label"><span>拍摄时间</span><span class="auto-tag">自动获取</span></div>
-      <input type="text" id="inputTime" placeholder="2024.01.15 周一 14:30">
-    </div>
-
-    <div class="field">
-      <div class="field-label"><span>照片类型</span></div>
-      <div class="type-chips" id="typePicker">
-        <div class="type-chip active" data-type="现场核查">现场核查</div>
-        <div class="type-chip" data-type="进度汇报">进度汇报</div>
-        <div class="type-chip" data-type="问题记录">问题记录</div>
-        <div class="type-chip" data-type="竣工验收">竣工验收</div>
+    <!-- 拍摄信息组 -->
+    <div class="form-group">
+      <div class="form-header">
+        <span>基础信息</span>
+        <span style="font-weight: 400; font-size: 11px; opacity: 0.6;">SYSTEM AUTO</span>
       </div>
-      <input type="text" id="inputType" value="现场核查" placeholder="请输入照片类型">
+
+      <!-- 时间 -->
+      <div class="field">
+        <div class="field-label">
+          <span>拍摄时间</span>
+          <span class="auto-tag">AUTO</span>
+        </div>
+        <input type="text" id="inputTime" placeholder="2024.01.15 周一 14:30">
+      </div>
+
+      <!-- 类型 -->
+      <div class="field">
+        <div class="field-label"><span>工作类型</span></div>
+        <div class="type-chips" id="typePicker">
+          <div class="type-chip active" data-type="现场核查">现场核查</div>
+          <div class="type-chip" data-type="进度汇报">进度汇报</div>
+          <div class="type-chip" data-type="问题记录">问题记录</div>
+          <div class="type-chip" data-type="竣工验收">竣工验收</div>
+        </div>
+        <input type="text" id="inputType" value="现场核查" placeholder="自定义类型" style="margin-top: 8px; font-size: 14px;">
+      </div>
+
+      <!-- 设备 -->
+      <div class="field">
+        <div class="field-label">
+          <span>设备型号</span>
+          <span class="auto-tag">DETECT</span>
+        </div>
+        <input type="text" id="inputDevice" value="iPhone 13 Pro" placeholder="自动获取">
+      </div>
     </div>
 
-    <div class="field">
-      <div class="field-label">
-        <span>详细地址</span>
-        <button class="btn-inline" id="refreshLocBtn">
+    <!-- 位置信息组 -->
+    <div class="form-group">
+      <div class="form-header">
+        <span>位置数据</span>
+        <button class="btn-text" id="refreshLocBtn">
           <svg class="icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.23"/><path d="M21 3v6h-6"/></svg>
-          刷新定位
+          刷新
         </button>
       </div>
-      <textarea id="inputLocation" placeholder="请输入详细地址..." rows="2"></textarea>
-      <div id="locError" style="color: var(--danger); font-size: 12px; margin-top: 6px; display: none;">
-        *自动获取地址失败，请手动输入
+
+      <div class="field">
+        <div class="field-label"><span>详细地址</span></div>
+        <textarea id="inputLocation" placeholder="正在获取位置..." rows="2"></textarea>
+        <div class="loc-error" id="locError" style="display:none;">
+          <svg class="icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          定位失败，请手动输入
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span>经纬度坐标</span></div>
+        <div class="field-grid">
+          <input type="text" id="inputLat" inputmode="decimal" placeholder="纬度 (N)">
+          <input type="text" id="inputLng" inputmode="decimal" placeholder="经度 (E)">
+        </div>
       </div>
     </div>
 
-    <div class="field">
-      <div class="field-label"><span>经纬度</span></div>
-      <div class="field-grid-2">
-        <input type="text" id="inputLat" inputmode="decimal" placeholder="纬度">
-        <input type="text" id="inputLng" inputmode="decimal" placeholder="经度">
+    <!-- 备注组 -->
+    <div class="form-group">
+      <div class="form-header"><span>附加备注</span></div>
+      <div class="field">
+        <textarea id="inputNote" placeholder="添加备注信息..." style="height: 80px;"></textarea>
       </div>
     </div>
-
-    <div class="field">
-      <div class="field-label"><span>手机型号</span></div>
-      <input type="text" id="inputDevice" value="iPhone 13 Pro" placeholder="例如：iPhone 13 Pro">
-    </div>
-
-    <div class="field">
-      <div class="field-label"><span>备注信息（选填）</span></div>
-      <input type="text" id="inputNote" placeholder="如：施工区域A">
-    </div>
+    
+    <!-- 底部留白 -->
+    <div style="height: 20px;"></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <div class="save-overlay" id="saveOverlay">
-  <div class="hint-text">保存图片</div>
-  <div class="hint-sub">若系统无法直接保存，请长按下方图片</div>
-  <img id="savePreviewImg" class="save-preview-img" alt="预览图">
-  <div class="save-actions">
-    <button class="btn-primary" id="directDownloadBtn">下载图片</button>
-    <button class="btn-secondary" id="saveCloseBtn">关闭</button>
+  <div class="save-card">
+    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">保存照片</div>
+    <div style="font-size: 13px; color: var(--text-sub); margin-bottom: 20px;">如无法直接保存，请长按下方图片</div>
+    <img id="savePreviewImg" class="save-preview-img" alt="Result">
+    <div class="save-actions">
+      <button class="btn-primary" id="directDownloadBtn">下载图片</button>
+      <button class="btn-secondary" id="saveCloseBtn">关闭</button>
+    </div>
   </div>
 </div>
 
@@ -494,8 +656,7 @@ function wgs84ToGcj02(lng, lat) {
   const sqrtMagic = Math.sqrt(magic);
   dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * PI);
   dLng = (dLng * 180.0) / (a / sqrtMagic * Math.cos(radLat) * PI);
-  const mgLat = { lat: lat + dLat, lng: lng + dLng };
-  return mgLat;
+  return { lat: lat + dLat, lng: lng + dLng };
 }
 
 const state = {
@@ -507,9 +668,8 @@ const state = {
   device: { brand: '', model: '' },
   currentTypeChip: '现场核查',
   lastBlob: null,
-  previewHeight: '35vh',
   isPreviewOpen: true,
-  drawScheduled: false // RAF 节流状态
+  drawScheduled: false
 };
 
 function haptic(style = 'light') {
@@ -546,51 +706,34 @@ async function init(){
   initPreviewInteractions();
 }
 
-// ================= 预览切换逻辑 =================
+// ================= 预览切换逻辑 (适配新UI) =================
 function initPreviewInteractions() {
   const toggleBtn = document.getElementById('previewToggleBtn');
+  const toggleIcon = document.getElementById('toggleIcon');
+  const previewCard = document.getElementById('previewCard');
+  
+  // 确保初始状态是展开的
+  state.isPreviewOpen = true;
+
   toggleBtn.addEventListener('click', () => {
-    togglePreview();
     haptic();
+    togglePreview(previewCard, toggleIcon);
   });
 }
 
-function togglePreview() {
-  const contentWrapper = document.getElementById('previewContent');
-  const toggleBtn = document.getElementById('previewToggleBtn');
-
-  if (state.isPreviewOpen) {
-    contentWrapper.classList.add('collapsed');
-    toggleBtn.classList.add('collapsed');
-    state.isPreviewOpen = false;
-  } else {
-    contentWrapper.classList.remove('collapsed');
-    toggleBtn.classList.remove('collapsed');
-    // 展开时立即触发一次重绘，确保显示
-    scheduleDraw();
-    state.isPreviewOpen = true;
-  }
-}
-
-function setPreviewHeight(vh) {
-  const contentWrapper = document.getElementById('previewContent');
-  const toggleBtn = document.getElementById('previewToggleBtn');
+function togglePreview(card, icon) {
+  state.isPreviewOpen = !state.isPreviewOpen;
   
-  contentWrapper.style.height = vh;
-  state.previewHeight = vh;
-  state.isPreviewOpen = true;
-  contentWrapper.classList.remove('collapsed');
-  toggleBtn.classList.remove('collapsed');
-}
-
-// RAF 节流重绘
-function scheduleDraw() {
-  if (!state.drawScheduled) {
-    state.drawScheduled = true;
-    requestAnimationFrame(() => {
-      drawResult();
-      state.drawScheduled = false;
-    });
+  if (state.isPreviewOpen) {
+    // 展开逻辑
+    card.classList.remove('collapsed');
+    icon.classList.remove('collapsed');
+    // 展开后稍微延迟重绘，确保尺寸正确
+    setTimeout(scheduleDraw, 350);
+  } else {
+    // 收起逻辑
+    card.classList.add('collapsed');
+    icon.classList.add('collapsed');
   }
 }
 // =================================================
@@ -631,7 +774,6 @@ function bindEvents(){
   
   document.getElementById('saveCloseBtn').addEventListener('click', () => document.getElementById('saveOverlay').classList.remove('show'));
   
-  // 新增：直接下载按钮事件
   document.getElementById('directDownloadBtn').addEventListener('click', () => {
     if(state.lastBlob) triggerDownload(state.lastBlob);
   });
@@ -686,7 +828,6 @@ async function startCamera(){
     
     showToast(msg, 'error');
     document.getElementById('permissionPrompt').style.display = 'flex';
-    // 更新提示文案引导用户
     const promptP = document.querySelector('.permission-prompt p');
     if(promptP) promptP.textContent = err.name === 'NotAllowedError' ? '请在系统设置中允许摄像头和位置权限后，刷新页面重试。' : '请检查设备连接后重试。';
   }
@@ -749,7 +890,7 @@ async function requestLocation(){
   locText.textContent = '正在定位...';
   locDot.classList.remove('fixed');
   locEl.classList.add('waiting');
-  locDot.style.background = 'var(--accent-hi)';
+  locDot.style.background = 'var(--accent)';
   if(document.getElementById('locError')) {
     document.getElementById('locError').style.display = 'none';
   }
@@ -854,7 +995,12 @@ function enterEditor(){
     state.stream = null;
   }
 
-  setPreviewHeight('35vh');
+  // 初始化预览状态为展开
+  const previewCard = document.getElementById('previewCard');
+  const toggleIcon = document.getElementById('toggleIcon');
+  if(previewCard) previewCard.classList.remove('collapsed');
+  if(toggleIcon) toggleIcon.classList.remove('collapsed');
+  state.isPreviewOpen = true;
 
   switchView('editorView');
   const now = new Date();
@@ -866,7 +1012,6 @@ function enterEditor(){
   }
   if(state.geo.address) document.getElementById('inputLocation').value = state.geo.address;
   
-  // 硬编码设备型号
   document.getElementById('inputDevice').value = 'iPhone 13 Pro';
   
   scheduleDraw();
@@ -888,7 +1033,6 @@ function switchView(viewId){
   document.getElementById(viewId).classList.add('active');
   
   if(viewId === 'cameraView') {
-    // 优化：释放内存
     if(state.capturedImage) {
       state.capturedImage = null;
     }
@@ -950,7 +1094,6 @@ function drawTagIcon(ctx, x, y, size, color) {
 }
 
 function drawResult(){
-  // 优化：折叠时不绘制
   if(!state.isPreviewOpen || !state.capturedImage) return;
 
   const canvas = document.getElementById('resultCanvas');
@@ -964,7 +1107,6 @@ function drawResult(){
   const topBorder = sideBorder;
   const padding = sideBorder * 0.8;
 
-  // 优化：基于最小尺寸计算字体，确保横竖屏字号一致
   const minDimension = Math.min(W, H);
   const baseFont = Math.max(minDimension * 0.03, 14);
   
@@ -1005,7 +1147,7 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB, timeFo
   const lineHeight = 1.8;
   let currentY = textAreaY + padding;
 
-  const colorPrimary = '#2563EB'; 
+  const colorPrimary = '#007AFF'; // 使用 iOS 蓝作为主色
   const colorText1 = '#0F172A';   
   const colorText2 = '#334155';   
   const colorText3 = '#64748B';   
@@ -1094,7 +1236,6 @@ function formatCoord(val, dir){
   return `${d}°${m}'${dir}`;
 }
 
-// 新增：直接下载功能
 function triggerDownload(blob){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
