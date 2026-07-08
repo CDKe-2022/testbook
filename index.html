@@ -849,8 +849,10 @@ function drawTagIcon(ctx, x, y, size, color) {
   ctx.beginPath(); ctx.moveTo(x + size*0.1, y + size*0.5); ctx.lineTo(x + size*0.5, y + size*0.1); ctx.lineTo(x + size*0.9, y + size*0.1); ctx.lineTo(x + size*0.9, y + size*0.5); ctx.lineTo(x + size*0.5, y + size*0.9); ctx.closePath(); ctx.stroke();
 }
 
+// 1. 修改 drawResult：增加底部空间，防止多行地址被切掉
 function drawResult(){
   if(!state.isPreviewOpen || !state.capturedImage) return;
+
   const canvas = document.getElementById('resultCanvas');
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -871,8 +873,12 @@ function drawResult(){
   const iconSize = baseFont * 0.8;
 
   const lineHeight = 1.8;
-  const textHeight = padding * 2 + (timeFont * lineHeight) + (infoFont * lineHeight) + (smallFont * lineHeight) + (smallFont * lineHeight) + 20;
-  let bottomBorder = Math.max(H * 0.2, textHeight);
+  // 修改点：增加额外的 40px 缓冲空间，用于容纳多行地址
+  const extraHeightForLongAddress = 40; 
+  const textHeight = padding * 2 + (timeFont * lineHeight) + (infoFont * lineHeight) + (smallFont * lineHeight) + (smallFont * lineHeight) + 20 + extraHeightForLongAddress;
+  
+  // 修改点：将底部比例从 0.2 提升到 0.35，给长地址更多空间
+  let bottomBorder = Math.max(H * 0.35, textHeight);
 
   canvas.width = W + sideBorder * 2;
   canvas.height = H + topBorder + bottomBorder;
@@ -884,12 +890,43 @@ function drawResult(){
   drawWatermarkText(ctx, canvas.width, canvas.height, W, H, sideBorder, topBorder, bottomBorder, timeFont, infoFont, smallFont, iconSize, padding);
 }
 
+// 辅助函数：将长文本按宽度切分为多行
+function wrapText(ctx, text, maxWidth, maxLines = 2) {
+  const words = text.split(''); // 按字符分割
+  let lines = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const width = ctx.measureText(currentLine + word).width;
+    if (width < maxWidth) {
+      currentLine += word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+      // 限制最大行数
+      if (lines.length >= maxLines) {
+        // 如果超过了最大行数，截断最后一行并加省略号
+        let lastLine = lines[lines.length - 1];
+        while (ctx.measureText(lastLine + '...').width > maxWidth && lastLine.length > 0) {
+          lastLine = lastLine.slice(0, -1);
+        }
+        lines[lines.length - 1] = lastLine + '...';
+        return lines;
+      }
+    }
+  }
+  lines.push(currentLine);
+  return lines;
+}
+
+// 2. 修改 drawWatermarkText：地址部分改为循环绘制多行
 function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB, timeFont, infoFont, smallFont, iconSize, padding) {
   const timeInput = document.getElementById('inputTime');
-  const time = (timeInput && timeInput.value) ? timeInput.value : formatTime(new Date()); // 确保有时间
+  const time = (timeInput && timeInput.value) ? timeInput.value : formatTime(new Date());
   
   const type = document.getElementById('inputType').value || '现场核查';
-  const location = document.getElementById('inputLocation').value || '未填写地点';
+  const location = document.getElementById('inputLocation').value || '未填写地点'; // 地址文本
   const lat = document.getElementById('inputLat').value;
   const lng = document.getElementById('inputLng').value;
   const device = document.getElementById('inputDevice').value || 'iPhone 13 Pro';
@@ -923,6 +960,7 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB, timeFo
   const offsetX_Info = (maxIconWidth - iconSzInfo) / 2;
   const offsetX_Small = (maxIconWidth - iconSzSmall) / 2;
 
+  // --- 1. 时间 ---
   drawClockIcon(ctx, leftX + offsetX_Time, currentY + (fontSizeTime - iconSzTime)/2, iconSzTime, colorPrimary);
   ctx.fillStyle = colorText1;
   ctx.font = `700 ${timeFont}px 'JetBrains Mono', monospace`;
@@ -931,31 +969,44 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB, timeFo
   ctx.fillText(time, textX, currentY);
   currentY += fontSizeTime * lineHeight;
 
+  // --- 2. 地址 (修改点：支持自动换行) ---
   drawLocationIcon(ctx, leftX + offsetX_Info, currentY + (fontSizeInfo - iconSzInfo)/2, iconSzInfo, colorPrimary);
   ctx.fillStyle = colorText2;
   ctx.font = `500 ${infoFont}px 'Noto Sans SC', sans-serif`;
-  ctx.fillText(truncateText(ctx, location, maxTextWidth), textX, currentY);
-  currentY += fontSizeInfo * lineHeight;
+  
+  // 使用 wrapText 函数处理地址，最多显示 2 行
+  const addressLines = wrapText(ctx, location, maxTextWidth, 2);
+  
+  addressLines.forEach((line) => {
+    ctx.fillText(line, textX, currentY);
+    currentY += fontSizeInfo * lineHeight; // 每一行都下移
+  });
 
+  // --- 3. 类型 ---
   drawTagIcon(ctx, leftX + offsetX_Small, currentY + (fontSizeSmall - iconSzSmall)/2, iconSzSmall, colorPrimary);
   ctx.fillStyle = colorText3;
   ctx.font = `400 ${smallFont}px 'Noto Sans SC', sans-serif`;
   let typeText = type + (note ? ` · ${note}` : '');
+  // 类型部分保持单行截断，因为通常较短
   ctx.fillText(truncateText(ctx, typeText, maxTextWidth), textX, currentY);
   currentY += fontSizeSmall * lineHeight;
 
+  // --- 4. 分割线 ---
   ctx.strokeStyle = colorLine; ctx.lineWidth = 1; ctx.beginPath();
   ctx.moveTo(leftX, currentY); ctx.lineTo(rightX, currentY); ctx.stroke();
   currentY += 25;
 
+  // --- 5. 底部信息 (设备 & 坐标) ---
   ctx.fillStyle = colorText3;
   ctx.font = `400 ${smallFont}px 'Noto Sans SC', sans-serif`;
   ctx.textBaseline = 'top';
+  
   ctx.textAlign = 'left';
   ctx.fillText(truncateText(ctx, device, (rightX - leftX) / 2 - padding), leftX, currentY);
+  
   ctx.textAlign = 'right';
   let coordText = '';
-  if(lat && lng) coordText = `${formatCoord(lat, 'N')} ${formatCoord(lng, 'E')}`;
+  if(lat && lng) coordText = `${formatCoord(lat, 'N')}${formatCoord(lng, 'E')}`;
   if(coordText) ctx.fillText(truncateText(ctx, coordText, (rightX - leftX) / 2), rightX, currentY);
 }
 
