@@ -849,7 +849,6 @@ function drawTagIcon(ctx, x, y, size, color) {
   ctx.beginPath(); ctx.moveTo(x + size*0.1, y + size*0.5); ctx.lineTo(x + size*0.5, y + size*0.1); ctx.lineTo(x + size*0.9, y + size*0.1); ctx.lineTo(x + size*0.9, y + size*0.5); ctx.lineTo(x + size*0.5, y + size*0.9); ctx.closePath(); ctx.stroke();
 }
 
-// 1. 修改 drawResult：增加底部空间，防止多行地址被切掉
 function drawResult(){
   if(!state.isPreviewOpen || !state.capturedImage) return;
 
@@ -872,13 +871,45 @@ function drawResult(){
   const smallFont = baseFont * 0.9; 
   const iconSize = baseFont * 0.8;
 
-  const lineHeight = 1.8;
-  // 修改点：增加额外的 40px 缓冲空间，用于容纳多行地址
-  const extraHeightForLongAddress = 40; 
-  const textHeight = padding * 2 + (timeFont * lineHeight) + (infoFont * lineHeight) + (smallFont * lineHeight) + (smallFont * lineHeight) + 20 + extraHeightForLongAddress;
+  // ==========================================
+  // 核心修改：动态计算底部高度
+  // ==========================================
   
-  // 修改点：将底部比例从 0.2 提升到 0.35，给长地址更多空间
-  let bottomBorder = Math.max(H * 0.35, textHeight);
+  // 1. 临时设置字体以便测量文字宽度
+  ctx.font = `500 ${infoFont}px 'Noto Sans SC', sans-serif`;
+  
+  // 估算文本区域的可用最大宽度 (模拟 drawWatermarkText 中的逻辑)
+  const maxIconWidth = Math.ceil(iconSize * 1.2); 
+  const textX = sideBorder + padding + maxIconWidth + (padding * 0.5);
+  const rightX = sideBorder + W - padding;
+  const maxTextWidth = rightX - textX;
+
+  // 2. 获取地址文本并计算行数
+  const location = document.getElementById('inputLocation').value || '未填写地点';
+  const addressLines = wrapText(ctx, location, maxTextWidth, 2); // 调用辅助函数，最多2行
+  
+  // 3. 计算各部分的高度
+  const lineHeight = 1.8;
+  
+  const heightTime = timeFont * lineHeight;             // 时间行高度
+  const heightAddress = infoFont * lineHeight * addressLines.length; // 地址高度（动态）
+  const heightType = smallFont * lineHeight;            // 类型行高度
+  const heightBottomInfo = smallFont;                   // 底部设备/坐标行高度（大致）
+  
+  // 分割线及上下间距
+  const spacingDivider = 20 + 25; 
+  const totalPadding = padding * 2;
+
+  // 4. 累加得到所需的总文本高度
+  const requiredTextHeight = totalPadding + heightTime + heightAddress + heightType + spacingDivider + heightBottomInfo;
+
+  // 5. 最终决定底部区域高度
+  // 策略：取“实际所需高度”和“图片高度的12%”中的最大值（防止太挤）
+  // 限制：最大不超过图片高度的 40% (防止太长)
+  let bottomBorder = Math.max(H * 0.12, requiredTextHeight);
+  if (bottomBorder > H * 0.40) bottomBorder = H * 0.40;
+
+  // ==========================================
 
   canvas.width = W + sideBorder * 2;
   canvas.height = H + topBorder + bottomBorder;
