@@ -8,27 +8,24 @@
 <meta name="theme-color" content="#ffffff">
 <title>工作水印相机</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f5f7;
+  --bg:#f2f3f5;
   --surface:#ffffff;
   --surface-2:#f8f9fa;
   --surface-3:#f1f3f5;
   --border:#e5e7eb;
-  --border-hi:#d1d5db;
   --fg:#1f2937;
   --fg-2:#374151;
+  --fg-3:#6b7280;
   --muted:#9ca3af;
-  --muted-hi:#6b7280;
-  --accent:#0d9488;
-  --accent-hi:#14b8a6;
-  --accent-dark:#0f766e;
-  --accent-soft:rgba(13,148,136,0.08);
+  --accent:#2563eb;
+  --accent-hi:#3b82f6;
+  --accent-soft:rgba(37,99,235,0.08);
   --danger:#ef4444;
-  --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg:0 12px 32px rgba(0,0,0,0.15);
+  --shadow-sm:0 1px 2px 0 rgba(0,0,0,0.05);
+  --shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
   --safe-top:env(safe-area-inset-top,0px);
   --safe-bottom:env(safe-area-inset-bottom,0px);
 }
@@ -46,6 +43,7 @@ body{
 .view{position:fixed;inset:0;display:none;flex-direction:column}
 .view.active{display:flex}
 
+/* ================= 拍摄页 ================= */
 #cameraView{background:#000;z-index:1}
 #cameraView .preview-container{
   flex:1;position:relative;overflow:hidden;
@@ -128,40 +126,74 @@ body{
   font-family:inherit;cursor:pointer;margin-top:8px;
 }
 
+/* ================= 编辑页 ================= */
 #editorView{background:var(--bg);z-index:2}
 
-.editor-header {
+/* 1. 顶部全局功能区 */
+.global-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: calc(12px + var(--safe-top)) 16px 12px;
-  flex-shrink: 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  z-index: 5;
+  flex-shrink: 0;
+  height: 56px;
+  z-index: 10;
 }
 .header-btn {
-  background: none; border: none; font-family: inherit; font-size: 15px;
-  color: var(--fg-2); cursor: pointer; padding: 4px 8px; display: flex; align-items: center; gap: 4px;
-  flex-shrink: 0;
+  background: none; border: none; font-family: inherit; font-size: 16px;
+  color: var(--fg-2); cursor: pointer; padding: 8px 12px; display: flex; align-items: center; gap: 4px;
+  transition: color 0.2s;
 }
+.header-btn:active{opacity: 0.6}
 .header-btn.save { color: var(--accent); font-weight: 600; }
-.header-btn.toggle { color: var(--fg-2); } /* 预览切换按钮颜色 */
-.editor-header h2 { font-size: 16px; font-weight: 600; color: var(--fg); }
 
-.preview-area{
-  flex:0 0 auto;
-  width: 100%;
-  height: 35vh;
-  overflow:hidden;
-  padding:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--surface-3);
-  box-sizing: border-box;
+/* 通用板块样式 */
+.section-block {
+  background: var(--surface);
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
   position: relative;
-  transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  z-index: 5;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg-2);
+  display: flex;
+  align-items: center;
+}
+.section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin-right: 8px;
+}
+
+/* 第一部分：预览 */
+.preview-content-wrapper {
+  background: #e5e7eb;
+  width: 100%;
+  overflow: hidden;
+  transition: height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), padding 0.3s;
+  position: relative;
+}
+/* 折叠状态样式：确保不留空隙 */
+.preview-content-wrapper.collapsed {
+  height: 0 !important;
+  padding: 0 !important;
 }
 
 .preview-frame{
@@ -171,67 +203,87 @@ body{
   align-items:center;
   justify-content:center;
   overflow: hidden;
-  padding: 12px;
+  padding: 16px;
 }
 .preview-frame canvas{
   max-height:100%;
   max-width:100%;
   width:auto;
   height:auto;
-  box-shadow:var(--shadow-md);
+  box-shadow:var(--shadow);
   border-radius:8px;
   object-fit: contain;
+  background:#fff;
 }
+.section-toggle-btn {
+  background: none; border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.section-toggle-btn svg { width: 20px; height: 20px; transition: transform 0.3s; }
+.section-toggle-btn.collapsed svg { transform: rotate(180deg); }
 
-.edit-sheet{
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  max-height:none;
-  border-radius:16px 16px 0 0;
-  box-shadow:0 -4px 20px rgba(0,0,0,0.08);
-  padding:16px 16px calc(20px + var(--safe-bottom));
+/* 第二部分：拍摄信息 */
+.info-content {
+  flex: 1;
+  min-height: 0;
   background: var(--surface);
-  flex-shrink: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 calc(20px + var(--safe-bottom));
+  margin-bottom: 0;
+  box-shadow: none;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
 }
-/* 已删除 .sheet-handle */
-.sheet-title{font-size:15px;font-weight:600;color:var(--fg);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.sheet-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px;}
 
-.field{margin-bottom:14px}
-.field-label{font-size:12px;color:var(--muted-hi);font-weight:500;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
-.field-label .auto-tag{font-size:10px;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:4px;}
-.input-row{display:flex;gap:8px;align-items:center}
-input[type="text"],input[type="number"],select,textarea{
-  width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
-  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--fg);outline:none;transition:all 0.15s;
+.field{padding: 16px 16px 8px; border-bottom: 1px solid var(--surface-2);}
+.field:last-child{border-bottom: none;}
+.field-label{font-size:12px;color:var(--fg-3);font-weight:500;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.field-label .auto-tag{font-size:10px;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:10px;}
+
+/* 输入框 */
+input[type="text"],input[type="number"],textarea{
+  width:100%;background:var(--bg);border:1px solid transparent;border-radius:8px;
+  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--fg);outline:none;transition:all 0.2s;
 }
-input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft);}
-input[type="text"]{user-select:text;-webkit-user-select:text}
+input:focus,textarea:focus{
+  background:var(--surface);
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+textarea{resize:none;line-height:1.5;height: 60px;}
+
 .btn-inline{
-  padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
-  font-family:inherit;font-size:13px;color:var(--fg-2);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;
+  padding:4px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+  font-family:inherit;font-size:11px;color:var(--fg-2);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;
 }
 .btn-inline:active{background:var(--surface-3)}
 
-.field-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-.device-picker{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:0 -4px;padding:0 4px 4px;scrollbar-width:none;}
-.device-picker::-webkit-scrollbar{display:none}
-.device-chip{
-  padding:8px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;
-  font-size:12px;color:var(--muted-hi);white-space:nowrap;cursor:pointer;transition:all 0.15s;
-  text-align: center;
+.type-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.type-chip{
+  padding:6px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:16px;
+  font-size:12px;color:var(--fg-2);cursor:pointer;transition:all 0.2s;
 }
-.device-chip:active{transform:scale(0.95)}
-.device-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.type-chip:active{transform:scale(0.96)}
+.type-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;}
 
+/* Toast 居中显示 */
 .toast{
-  position:fixed;top:calc(60px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-20px);
-  background:rgba(31,41,55,0.95);backdrop-filter:blur(12px);color:#fff;padding:10px 20px;border-radius:24px;
-  font-size:13px;z-index:1000;opacity:0;transition:all 0.3s;pointer-events:none;box-shadow:var(--shadow-lg);max-width:90%;text-align:center;
+  position:fixed;top:50%;left:50%;transform:translate(-50%, -50%) translateY(20px);
+  background:rgba(31,41,55,0.95);backdrop-filter:blur(12px);color:#fff;padding:12px 24px;border-radius:24px;
+  font-size:14px;z-index:1000;opacity:0;transition:all 0.3s;pointer-events:none;box-shadow:var(--shadow);max-width:80%;text-align:center;
 }
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.show{opacity:1;transform:translate(-50%, -50%) translateY(0)}
 .toast.error{background:rgba(239,68,68,0.95)}
 .toast.success{background:rgba(16,185,129,0.95)}
 
@@ -243,22 +295,20 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 .save-overlay.show{opacity:1;pointer-events:auto}
 .save-overlay .hint-text{color:#fff;font-size:16px;margin-bottom:20px;text-align:center;font-weight:500;}
 .save-overlay .hint-sub{color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:24px;text-align:center;}
-.save-preview-img{max-width:80%;max-height:50vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
-.save-actions{margin-top:32px;display:flex;gap:12px}
-.save-actions button{padding:12px 24px;border-radius:24px;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+.save-preview-img{max-width:80%;max-height:50vh;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+.save-actions{margin-top:32px;display:flex;gap:12px; flex-direction: column; width: 80%; max-width: 300px;}
+.save-actions button{padding:14px 24px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer; width: 100%;}
 .btn-secondary{background:rgba(255,255,255,0.15);color:#fff}
 .btn-primary{background:var(--accent);color:#fff}
 
-.icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.icon-sm{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon-sm{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 @media(min-width:600px){
   #cameraView .preview-container{max-width:420px;margin:0 auto}
   .camera-bottombar{max-width:420px;margin:0 auto}
   .camera-topbar{max-width:420px;margin:0 auto;left:50%;transform:translateX(-50%);right:auto;width:100%}
-  #editorView .preview-area{max-width:480px;margin:0 auto}
-  #editorView .edit-sheet{max-width:480px;margin:0 auto}
-  .editor-header{max-width:480px;margin:0 auto}
+  .section-block{max-width:600px;margin: 8px auto; border-radius: 12px;}
 }
 </style>
 </head>
@@ -280,10 +330,10 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
         </div>
       </div>
       <div class="camera-topbtns">
-        <button class="top-btn" id="gridBtn" title="网格线">
+        <button class="top-btn" id="gridBtn" title="网格线" aria-label="切换网格线">
           <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         </button>
-        <button class="top-btn" id="switchCameraBtn" title="切换摄像头">
+        <button class="top-btn" id="switchCameraBtn" title="切换摄像头" aria-label="切换摄像头">
           <svg class="icon" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
         </button>
       </div>
@@ -320,52 +370,56 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 </div>
 
 <div class="view" id="editorView">
-  <div class="editor-header">
+  <div class="global-header">
     <button class="header-btn back" id="editorBackBtn">返回</button>
-    <h2>预览与编辑</h2>
-    <!-- 新的固定切换按钮 -->
-    <button class="header-btn toggle" id="previewToggleBtn" title="切换预览">
-      <svg class="icon" viewBox="0 0 24 24" id="previewToggleIcon"><polyline points="18 15 12 9 6 15"/></svg>
-    </button>
     <button class="header-btn save" id="editorSaveBtn">保存</button>
   </div>
 
-  <div class="preview-area" id="previewArea">
-    <div class="preview-frame">
-      <canvas id="resultCanvas"></canvas>
+  <div class="section-block">
+    <div class="section-header">
+      <div class="section-title">照片预览</div>
+      <button class="section-toggle-btn" id="previewToggleBtn" title="收起/展开预览" aria-label="收起或展开预览">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+    <div class="preview-content-wrapper" id="previewContent">
+      <div class="preview-frame">
+        <canvas id="resultCanvas"></canvas>
+      </div>
     </div>
   </div>
 
-  <div class="edit-sheet" id="editSheet">
-    <!-- 已删除 sheet-handle -->
-    <div class="sheet-title">拍摄信息</div>
+  <div class="section-block info-content">
+    <div class="section-header" style="position:sticky; top:0; z-index:2; background:var(--surface);">
+      <div class="section-title">拍摄信息</div>
+    </div>
 
     <div class="field">
       <div class="field-label"><span>拍摄时间</span><span class="auto-tag">自动获取</span></div>
-      <input type="text" id="inputTime" placeholder="2024-01-15 周一 14:30">
+      <input type="text" id="inputTime" placeholder="2024.01.15 周一 14:30">
     </div>
 
     <div class="field">
       <div class="field-label"><span>照片类型</span></div>
-      <div class="field-grid-2" id="typePicker">
-        <div class="device-chip active" data-type="现场核查">现场核查</div>
-        <div class="device-chip" data-type="进度汇报">进度汇报</div>
-        <div class="device-chip" data-type="问题记录">问题记录</div>
-        <div class="device-chip" data-type="竣工验收">竣工验收</div>
+      <div class="type-chips" id="typePicker">
+        <div class="type-chip active" data-type="现场核查">现场核查</div>
+        <div class="type-chip" data-type="进度汇报">进度汇报</div>
+        <div class="type-chip" data-type="问题记录">问题记录</div>
+        <div class="type-chip" data-type="竣工验收">竣工验收</div>
       </div>
-      <input type="text" id="inputType" value="现场核查" placeholder="如：现场核查" style="margin-top:8px;">
+      <input type="text" id="inputType" value="现场核查" placeholder="请输入照片类型">
     </div>
 
     <div class="field">
       <div class="field-label">
         <span>详细地址</span>
-        <button class="btn-inline" id="refreshLocBtn" style="font-size:11px;padding:4px 10px;">
+        <button class="btn-inline" id="refreshLocBtn">
           <svg class="icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.23"/><path d="M21 3v6h-6"/></svg>
           刷新定位
         </button>
       </div>
-      <textarea id="inputLocation" placeholder="请输入详细地址（如：四川省自贡市自流井区自由路123号XX公司）" rows="2"></textarea>
-      <div id="locError" style="color: var(--danger); font-size: 11px; margin-top: 4px; display: none;">
+      <textarea id="inputLocation" placeholder="请输入详细地址..." rows="2"></textarea>
+      <div id="locError" style="color: var(--danger); font-size: 12px; margin-top: 6px; display: none;">
         *自动获取地址失败，请手动输入
       </div>
     </div>
@@ -379,8 +433,8 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
     </div>
 
     <div class="field">
-      <div class="device-picker" id="devicePicker"></div>
-      <input type="text" id="inputDevice" placeholder="或手动输入设备型号" style="margin-top:8px;">
+      <div class="field-label"><span>手机型号</span></div>
+      <input type="text" id="inputDevice" value="iPhone 13 Pro" placeholder="例如：iPhone 13 Pro">
     </div>
 
     <div class="field">
@@ -393,12 +447,12 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 <div class="toast" id="toast"></div>
 
 <div class="save-overlay" id="saveOverlay">
-  <div class="hint-text">长按下方图片保存到相册</div>
-  <div class="hint-sub">若系统未弹出保存选项，请使用此方式保存</div>
+  <div class="hint-text">保存图片</div>
+  <div class="hint-sub">若系统无法直接保存，请长按下方图片</div>
   <img id="savePreviewImg" class="save-preview-img" alt="预览图">
   <div class="save-actions">
+    <button class="btn-primary" id="directDownloadBtn">下载图片</button>
     <button class="btn-secondary" id="saveCloseBtn">关闭</button>
-    <button class="btn-primary" id="saveRetryBtn">重试系统分享</button>
   </div>
 </div>
 
@@ -410,7 +464,7 @@ input[type="text"]{user-select:text;-webkit-user-select:text}
 const AMAP_KEY = 'aa30998599ef699354a51a1236aa6946'; 
 // ==========================================
 
-// WGS84转GCJ02坐标系算法
+// WGS84转GCJ02
 const PI = 3.1415926535897932384626;
 const a = 6378245.0;
 const ee = 0.00669342162296594323;
@@ -451,29 +505,12 @@ const state = {
   geo: { lat: '', lng: '', accuracy: 0, address: '' },
   locationReady: false,
   device: { brand: '', model: '' },
-  currentDeviceChip: '',
   currentTypeChip: '现场核查',
   lastBlob: null,
-  currentHeightVh: 35,
+  previewHeight: '35vh',
+  isPreviewOpen: true,
+  drawScheduled: false // RAF 节流状态
 };
-
-const deviceModels = {
-  apple: ['iPhone 13 Pro','iPhone 15 Pro Max','iPhone 15 Pro','iPhone 14 Pro Max','iPhone 14 Pro','iPhone 12 Pro'],
-  huawei: ['华为 Mate 60 Pro','华为 P60 Pro','华为 Mate 50 Pro'],
-  xiaomi: ['小米 14 Pro','小米 13 Pro','Redmi K70'],
-  vivo: ['vivo X100','vivo X90'],
-  oppo: ['OPPO Find X7','OPPO Find X6'],
-};
-
-function debounce(func, wait) {
-  let timeout;
-  return function(...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
-
-const debouncedDrawResult = debounce(drawResult, 300);
 
 function haptic(style = 'light') {
   if (navigator.vibrate) {
@@ -481,10 +518,12 @@ function haptic(style = 'light') {
   }
 }
 
-function jsonpRequest(url) {
+function jsonpRequest(url, timeout = 10000) {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('请求超时')), timeout);
     const callbackName = 'amap_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
     window[callbackName] = function(data) {
+      clearTimeout(timer);
       resolve(data);
       delete window[callbackName];
       const script = document.getElementById(callbackName);
@@ -493,7 +532,7 @@ function jsonpRequest(url) {
     const script = document.createElement('script');
     script.id = callbackName;
     script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
-    script.onerror = () => reject(new Error('JSONP请求失败'));
+    script.onerror = (err) => { clearTimeout(timer); reject(new Error('JSONP请求失败')); };
     document.head.appendChild(script);
   });
 }
@@ -502,128 +541,59 @@ async function init(){
   if (document.fonts) {
     await document.fonts.ready;
   }
-  detectDevice();
-  renderDevicePicker();
   bindEvents();
   startLiveTime();
   initPreviewInteractions();
 }
 
-// ================= 简化的预览交互逻辑 =================
+// ================= 预览切换逻辑 =================
 function initPreviewInteractions() {
   const toggleBtn = document.getElementById('previewToggleBtn');
   toggleBtn.addEventListener('click', () => {
-    // 切换状态
-    if(state.currentHeightVh > 0) {
-      setPreviewHeight(0); // 当前有高度，收起
-    } else {
-      setPreviewHeight(35); // 当前没高度，展开
-    }
+    togglePreview();
     haptic();
   });
 }
 
+function togglePreview() {
+  const contentWrapper = document.getElementById('previewContent');
+  const toggleBtn = document.getElementById('previewToggleBtn');
+
+  if (state.isPreviewOpen) {
+    contentWrapper.classList.add('collapsed');
+    toggleBtn.classList.add('collapsed');
+    state.isPreviewOpen = false;
+  } else {
+    contentWrapper.classList.remove('collapsed');
+    toggleBtn.classList.remove('collapsed');
+    // 展开时立即触发一次重绘，确保显示
+    scheduleDraw();
+    state.isPreviewOpen = true;
+  }
+}
+
 function setPreviewHeight(vh) {
-  const previewArea = document.getElementById('previewArea');
-  const toggleIcon = document.getElementById('previewToggleIcon');
-
-  previewArea.style.height = vh + 'vh';
-  state.currentHeightVh = vh;
-
-  // 更新按钮图标
-  if (vh > 0) {
-    // 展开状态，显示向下箭头（点击收起）
-    toggleIcon.innerHTML = '<polyline points="6 9 12 15 18 9"/>';
-  } else {
-    // 收起状态，显示向上箭头（点击展开）
-    toggleIcon.innerHTML = '<polyline points="18 15 12 9 6 15"/>';
-  }
-}
-// =======================================================
-
-function detectDevice(){
-  const ua = navigator.userAgent;
-  let brand = 'apple';
-  let model = 'iPhone 13 Pro';
-
-  if(/iPhone|iPad|iPod/i.test(ua)){
-    brand = 'apple';
-    const w = screen.width * (window.devicePixelRatio || 1);
-    const h = screen.height * (window.devicePixelRatio || 1);
-    const res = `${Math.max(w,h)}x${Math.min(w,h)}`;
-    const appleMap = { 
-      '2796x1290':'iPhone 15 Pro Max', 
-      '2778x1284':'iPhone 14 Pro Max', 
-      '2532x1170':'iPhone 15 Pro', 
-      '1170x2532':'iPhone 13 Pro'
-    };
-    if(appleMap[res]) model = appleMap[res];
-  } else if(/Android/i.test(ua)){
-    if(/Huawei|HONOR/i.test(ua)) brand = 'huawei';
-    else if(/Xiaomi|Redmi/i.test(ua)) brand = 'xiaomi';
-    else if(/vivo/i.test(ua)) brand = 'vivo';
-    else if(/OPPO|oppo/i.test(ua)) brand = 'oppo';
-    const m = ua.match(/;\s*([a-zA-Z0-9\-_]+)\s*Build/);
-    if(m) model = m[1];
-  }
+  const contentWrapper = document.getElementById('previewContent');
+  const toggleBtn = document.getElementById('previewToggleBtn');
   
-  state.device = { brand, model };
+  contentWrapper.style.height = vh;
+  state.previewHeight = vh;
+  state.isPreviewOpen = true;
+  contentWrapper.classList.remove('collapsed');
+  toggleBtn.classList.remove('collapsed');
 }
 
-function renderDevicePicker(){
-  const picker = document.getElementById('devicePicker');
-  let html = '';
-  Object.keys(deviceModels).forEach(b => {
-    deviceModels[b].forEach(m => { html += `<div class="device-chip" data-device="${m}">${m}</div>`; });
-  });
-  picker.innerHTML = html;
-
-  const defaultChip = [...picker.querySelectorAll('.device-chip')].find(c => c.dataset.device === state.device.model);
-  if(defaultChip){
-    defaultChip.classList.add('active');
-    state.currentDeviceChip = state.device.model;
-    document.getElementById('inputDevice').value = state.device.model;
-  } else {
-    const firstChip = picker.querySelector('.device-chip');
-    if(firstChip){
-      firstChip.classList.add('active');
-      state.currentDeviceChip = firstChip.dataset.device;
-      document.getElementById('inputDevice').value = state.currentDeviceChip;
-    }
-  }
-
-  picker.querySelectorAll('.device-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      haptic('light');
-      picker.querySelectorAll('.device-chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      state.currentDeviceChip = chip.dataset.device;
-      document.getElementById('inputDevice').value = chip.dataset.device;
+// RAF 节流重绘
+function scheduleDraw() {
+  if (!state.drawScheduled) {
+    state.drawScheduled = true;
+    requestAnimationFrame(() => {
       drawResult();
-    });
-  });
-
-  const typePicker = document.getElementById('typePicker');
-  if(typePicker) {
-    typePicker.querySelectorAll('.device-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        haptic('light');
-        typePicker.querySelectorAll('.device-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        state.currentTypeChip = chip.dataset.type;
-        document.getElementById('inputType').value = chip.dataset.type;
-        drawResult();
-      });
+      state.drawScheduled = false;
     });
   }
-  
-  document.getElementById('inputType').addEventListener('input', e => {
-    if(typePicker) {
-      typePicker.querySelectorAll('.device-chip').forEach(c => c.classList.remove('active'));
-    }
-    drawResult();
-  });
 }
+// =================================================
 
 function bindEvents(){
   document.getElementById('enableCameraBtn').addEventListener('click', () => {
@@ -631,7 +601,6 @@ function bindEvents(){
     requestLocation();   
   });
   
-  // 点击顶部定位栏刷新定位
   document.getElementById('topLoc').addEventListener('click', requestLocation);
 
   document.getElementById('shutterBtn').addEventListener('click', () => { haptic('heavy'); capture(); });
@@ -653,15 +622,39 @@ function bindEvents(){
   
   document.getElementById('editorSaveBtn').addEventListener('click', saveImage);
 
+  // 输入事件改用 RAF 节流
   ['inputTime','inputType','inputLocation','inputLat','inputLng','inputDevice','inputNote'].forEach(id => {
-    document.getElementById(id).addEventListener('input', debouncedDrawResult);
+    document.getElementById(id).addEventListener('input', scheduleDraw);
   });
 
   document.getElementById('refreshLocBtn').addEventListener('click', requestLocation);
   
   document.getElementById('saveCloseBtn').addEventListener('click', () => document.getElementById('saveOverlay').classList.remove('show'));
-  document.getElementById('saveRetryBtn').addEventListener('click', () => {
-    if(state.lastBlob) shareImage(state.lastBlob);
+  
+  // 新增：直接下载按钮事件
+  document.getElementById('directDownloadBtn').addEventListener('click', () => {
+    if(state.lastBlob) triggerDownload(state.lastBlob);
+  });
+
+  const typePicker = document.getElementById('typePicker');
+  if(typePicker) {
+    typePicker.querySelectorAll('.type-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        haptic('light');
+        typePicker.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        state.currentTypeChip = chip.dataset.type;
+        document.getElementById('inputType').value = chip.dataset.type;
+        scheduleDraw();
+      });
+    });
+  }
+  
+  document.getElementById('inputType').addEventListener('input', e => {
+    if(typePicker) {
+      typePicker.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+    }
+    scheduleDraw();
   });
 }
 
@@ -687,8 +680,15 @@ async function startCamera(){
     video.srcObject = state.stream;
     video.style.transform = state.facingMode === 'user' ? 'scaleX(-1)' : 'none';
   } catch(err) {
-    showToast('无法访问摄像头，请检查权限或使用上传功能', 'error');
+    let msg = '无法访问摄像头，请检查权限或设备';
+    if (err.name === 'NotAllowedError') msg = '摄像头权限被拒绝，请在系统设置中开启';
+    else if (err.name === 'NotFoundError') msg = '未检测到摄像头设备';
+    
+    showToast(msg, 'error');
     document.getElementById('permissionPrompt').style.display = 'flex';
+    // 更新提示文案引导用户
+    const promptP = document.querySelector('.permission-prompt p');
+    if(promptP) promptP.textContent = err.name === 'NotAllowedError' ? '请在系统设置中允许摄像头和位置权限后，刷新页面重试。' : '请检查设备连接后重试。';
   }
 }
 
@@ -834,7 +834,7 @@ async function reverseGeocode(lat, lng){
       locEl.classList.remove('waiting');
       locText.textContent = finalAddress;
       if(locError) locError.style.display = 'none';
-      if(state.capturedImage) drawResult();
+      if(state.capturedImage) scheduleDraw();
     } else {
       throw new Error(data.info || '高德解析失败');
     }
@@ -854,7 +854,7 @@ function enterEditor(){
     state.stream = null;
   }
 
-  setPreviewHeight(35); // 默认展开
+  setPreviewHeight('35vh');
 
   switchView('editorView');
   const now = new Date();
@@ -866,7 +866,10 @@ function enterEditor(){
   }
   if(state.geo.address) document.getElementById('inputLocation').value = state.geo.address;
   
-  drawResult();
+  // 硬编码设备型号
+  document.getElementById('inputDevice').value = 'iPhone 13 Pro';
+  
+  scheduleDraw();
 }
 
 function formatTime(date){
@@ -885,6 +888,14 @@ function switchView(viewId){
   document.getElementById(viewId).classList.add('active');
   
   if(viewId === 'cameraView') {
+    // 优化：释放内存
+    if(state.capturedImage) {
+      state.capturedImage = null;
+    }
+    const cameraCanvas = document.getElementById('cameraCanvas');
+    const ctx = cameraCanvas.getContext('2d');
+    ctx.clearRect(0,0,cameraCanvas.width, cameraCanvas.height);
+
     if(!state.stream) {
       startCamera();
     } else {
@@ -939,7 +950,9 @@ function drawTagIcon(ctx, x, y, size, color) {
 }
 
 function drawResult(){
-  if(!state.capturedImage) return;
+  // 优化：折叠时不绘制
+  if(!state.isPreviewOpen || !state.capturedImage) return;
+
   const canvas = document.getElementById('resultCanvas');
   const ctx = canvas.getContext('2d');
   const img = state.capturedImage;
@@ -951,7 +964,10 @@ function drawResult(){
   const topBorder = sideBorder;
   const padding = sideBorder * 0.8;
 
-  const baseFont = Math.max(W * 0.024, 14);
+  // 优化：基于最小尺寸计算字体，确保横竖屏字号一致
+  const minDimension = Math.min(W, H);
+  const baseFont = Math.max(minDimension * 0.03, 14);
+  
   const timeFont = baseFont * 1.8; 
   const infoFont = baseFont * 1.2; 
   const smallFont = baseFont * 0.9; 
@@ -1003,8 +1019,7 @@ function drawWatermarkText(ctx, cW, cH, imgW, imgH, sideB, topB, bottomB, timeFo
   const iconSzInfo = Math.ceil(fontSizeInfo * 1.2);
   const iconSzSmall = Math.ceil(fontSizeSmall * 1.2);
 
-  const maxIconWidth = Math.max(iconSzTime, iconSzInfo, iconSzSmall);
-  
+  const maxIconWidth = Math.max(iconSzTime, iconSzInfo, iconSzSmall);  
   const textX = leftX + maxIconWidth + padding * 0.5;
   const maxTextWidth = rightX - textX;
 
@@ -1077,6 +1092,18 @@ function formatCoord(val, dir){
   const d = Math.floor(abs);
   const m = ((abs - d) * 60).toFixed(2);
   return `${d}°${m}'${dir}`;
+}
+
+// 新增：直接下载功能
+function triggerDownload(blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `WorkRecord_${Date.now()}.jpg`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('已开始下载', 'success');
+  document.getElementById('saveOverlay').classList.remove('show');
 }
 
 function saveImage(){
