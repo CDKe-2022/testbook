@@ -62,9 +62,34 @@
   .layout{
     display:grid; grid-template-columns:300px 1fr 300px;
     height:calc(100vh - 60px); position:relative; z-index:1;
+    transition:grid-template-columns 0.25s ease;
   }
-  aside{background:var(--panel); border-right:1px solid var(--border); overflow-y:auto; padding:20px}
+  .layout.collapsed-left{grid-template-columns:0px 1fr 300px}
+  .layout.collapsed-right{grid-template-columns:300px 1fr 0px}
+  .layout.collapsed-left.collapsed-right{grid-template-columns:0px 1fr 0px}
+  aside{
+    background:var(--panel); border-right:1px solid var(--border);
+    overflow-y:auto; padding:20px; position:relative;
+    transition:opacity 0.2s ease, padding 0.2s ease;
+    min-width:0;
+  }
   aside.right{border-right:none; border-left:1px solid var(--border)}
+  .layout.collapsed-left aside.left,
+  .layout.collapsed-right aside.right{
+    opacity:0; padding:0; pointer-events:none; overflow:hidden;
+  }
+  .sidebar-toggle{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:22px; height:52px; border:1px solid var(--border);
+    background:var(--panel); color:var(--fg-muted);
+    cursor:pointer; z-index:1000;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; transition:all 0.15s;
+    box-shadow:0 1px 6px rgba(0,0,0,0.12);
+  }
+  .sidebar-toggle:hover{color:var(--accent); border-color:var(--accent); background:var(--accent-soft)}
+  .sidebar-toggle.left-btn{left:0; border-radius:0 6px 6px 0; border-left:none}
+  .sidebar-toggle.right-btn{right:0; border-radius:6px 0 0 6px; border-right:none}
 
   /* ========== Map View ========== */
   .map-view{position:relative; background:var(--bg-soft); overflow:hidden}
@@ -314,7 +339,7 @@
   </div>
 </header>
 
-<div class="layout">
+<div class="layout" id="mainLayout">
   <!-- ========== Left Sidebar ========== -->
   <aside class="left">
     <div class="section-block">
@@ -353,6 +378,8 @@
 
   <!-- ========== Map View ========== -->
   <div class="map-view">
+    <button class="sidebar-toggle left-btn" onclick="toggleSidebar('left')" title="收起左侧">‹</button>
+    <button class="sidebar-toggle right-btn" onclick="toggleSidebar('right')" title="收起右侧">›</button>
     <div id="map"></div>
     <div class="empty-state" id="emptyState">
       <div class="glyph">
@@ -378,9 +405,6 @@
       </div>
       <div class="setting-row">
         <label><input type="checkbox" id="groupedMode">按区域分组（PPT友好）</label>
-      </div>
-      <div class="setting-row">
-        <label><input type="checkbox" id="labelMode">区域标注文字</label>
       </div>
       <div class="setting-row">
         <label style="display:block; margin-bottom:6px;">画布比例</label>
@@ -502,7 +526,22 @@ async function addFromApi() {
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    const name = adcode || url.split('/').pop().replace('.json', '').replace('_full', '');
+    let name = adcode || url.split('/').pop().replace('.json', '').replace('_full', '');
+
+    // 通过 adcode 加载时，额外获取区域真实名称
+    if (adcode) {
+      try {
+        const nameRes = await fetch(`https://geo.datav.aliyun.com/areas_v3/bound/${adcode}.json`);
+        if (nameRes.ok) {
+          const nameData = await nameRes.json();
+          const feats = nameData.features || [];
+          if (feats.length > 0 && feats[0].properties && feats[0].properties.name) {
+            name = feats[0].properties.name;
+          }
+        }
+      } catch (e) { /* 获取名称失败，使用 adcode 作为回退 */ }
+    }
+
     addLayer(name, data, adcode);
     document.getElementById('apiUrl').value = '';
   } catch (e) {
@@ -693,7 +732,7 @@ function extractOutline(layerId) {
       }
       if (!merged) return showToast('无法计算轮廓', 'error');
 
-      const outlineName = layerObj.name + ' · 轮廓';
+      const outlineName = layerObj.name;
       const outlineLayer = L.geoJSON(merged, {
         style: { color: '#b07d3a', weight: 2.5, fillColor: 'transparent', fillOpacity: 0, dashArray: '6,4' }
       }).addTo(map);
@@ -920,7 +959,6 @@ function doExportSVG(selectedCount) {
   const size = map.getSize();
   const outlineMode = document.getElementById('outlineMode').checked;
   const groupedMode = document.getElementById('groupedMode').checked;
-  const labelMode = document.getElementById('labelMode').checked;
   const ratio = document.getElementById('canvasRatio').value;
 
   // 关键修复：保留 Leaflet 原始 viewBox
@@ -1002,37 +1040,6 @@ function doExportSVG(selectedCount) {
     });
   }
 
-  // 区域标注文字
-  if (labelMode) {
-    const selectedFeatures = [];
-    layers.forEach(l => l.features.forEach(f => { if (f.selected) selectedFeatures.push(f); }));
-    const featuresToLabel = selectedFeatures.length > 0 ? selectedFeatures : layers.flatMap(l => l.features);
-
-    featuresToLabel.forEach(feat => {
-      if (!feat.layer || !feat.layer.getBounds) return;
-      const bounds = feat.layer.getBounds();
-      if (!bounds.isValid()) return;
-      const center = bounds.getCenter();
-      // 关键修复：用 latLngToLayerPoint 而非 latLngToContainerPoint
-      // layerPoint 是 SVG 路径使用的坐标系，与保留的 viewBox 一致
-      const point = map.latLngToLayerPoint(center);
-
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', point.x);
-      text.setAttribute('y', point.y);
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('dominant-baseline', 'middle');
-      text.setAttribute('font-size', '12');
-      text.setAttribute('font-family', 'Noto Sans SC, sans-serif');
-      text.setAttribute('fill', outlineMode ? '#333' : '#fff');
-      text.setAttribute('stroke', outlineMode ? 'none' : '#000');
-      text.setAttribute('stroke-width', outlineMode ? '0' : '0.5');
-      text.setAttribute('paint-order', 'stroke');
-      text.textContent = feat.name;
-      clone.appendChild(text);
-    });
-  }
-
   const svgData = new XMLSerializer().serializeToString(clone);
   const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -1055,7 +1062,10 @@ function exportLineartPNG() {
   const { selectedFeatures, removed } = prepareForExport();
   const count = selectedFeatures.length;
 
+  let done = false;
   const doExport = () => {
+    if (done) return;
+    done = true;
     setTimeout(() => {
       doExportLineartPNG(count);
       restoreAfterExport(removed, selectedFeatures);
@@ -1125,6 +1135,36 @@ function doExportLineartPNG(selectedCount) {
     p.removeAttribute('stroke-dasharray');
   });
 
+  // 添加地名标注（仅 PNG，SVG 不加）
+  const labelFeatures = [];
+  layers.forEach(l => l.features.forEach(f => { if (f.selected) labelFeatures.push(f); }));
+  const featuresToLabel = labelFeatures.length > 0 ? labelFeatures : layers.flatMap(l => l.features);
+
+  featuresToLabel.forEach(feat => {
+    if (!feat.layer || !feat.layer.getBounds) return;
+    const bounds = feat.layer.getBounds();
+    if (!bounds.isValid()) return;
+    const center = bounds.getCenter();
+    const point = map.latLngToLayerPoint(center);
+
+    // 简化地名：四川省→四川, 成都市→成都, 自贡市→自贡
+    let shortName = feat.name
+      .replace(/(省|市|自治区|自治州|地区|盟|县|区)$/, '')
+      .replace(/(壮族|回族|维吾尔|藏族|彝族|苗族|侗族|瑶族|白族|哈尼族|傣族|傈僳族|佤族|畲族|拉祜族|水族|东乡族|纳西族|景颇族|柯尔克孜族|土族|撒拉族|达斡尔族|仫佬族|羌族|布朗族|毛南族|仡佬族|锡伯族|阿昌族|普米族|塔吉克族|怒族|乌孜别克族|俄罗斯族|鄂温克族|德昂族|保安族|裕固族|京族|塔塔尔族|独龙族|鄂伦春族|赫哲族|门巴族|珞巴族|基诺族)/g, '');
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', point.x);
+    text.setAttribute('y', point.y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('font-size', '14');
+    text.setAttribute('font-family', 'Noto Sans SC, sans-serif');
+    text.setAttribute('fill', '#000000');
+    text.setAttribute('font-weight', '500');
+    text.textContent = shortName;
+    clone.appendChild(text);
+  });
+
   const svgData = new XMLSerializer().serializeToString(clone);
   const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
   const svgUrl = URL.createObjectURL(svgBlob);
@@ -1190,6 +1230,27 @@ function showToast(msg, type = 'info') {
 }
 
 // ============ 事件 ============
+// ============ 侧栏收起/展开 ============
+function toggleSidebar(side) {
+  const layout = document.getElementById('mainLayout');
+  const cls = side === 'left' ? 'collapsed-left' : 'collapsed-right';
+  layout.classList.toggle(cls);
+
+  const isCollapsed = layout.classList.contains(cls);
+  const btn = document.querySelector('.sidebar-toggle.' + side + '-btn');
+
+  if (side === 'left') {
+    btn.textContent = isCollapsed ? '›' : '‹';
+    btn.title = isCollapsed ? '展开左侧' : '收起左侧';
+  } else {
+    btn.textContent = isCollapsed ? '‹' : '›';
+    btn.title = isCollapsed ? '展开右侧' : '收起右侧';
+  }
+
+  // 地图重新计算尺寸
+  setTimeout(() => map.invalidateSize(), 280);
+}
+
 window.addEventListener('resize', () => map.invalidateSize());
 
 // 点击地图空白处取消 Leaflet 的 tooltip
