@@ -7,9 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
 <style>
   :root {
     --bg: #f4f5f7; --bg-soft: #ffffff;
@@ -297,6 +297,53 @@
   .prompt-note a{color:var(--accent-2); text-decoration:none}
   .prompt-note a:hover{text-decoration:underline}
 
+  /* ========== Preview Modal ========== */
+  .preview-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.5);
+    z-index:9998; display:none; align-items:center; justify-content:center;
+    backdrop-filter:blur(4px);
+  }
+  .preview-overlay.open{display:flex}
+  .preview-modal{
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,0.2);
+    width:90vw; max-width:900px; max-height:85vh;
+    display:flex; flex-direction:column; overflow:hidden;
+    animation:previewIn 0.2s ease;
+  }
+  @keyframes previewIn{from{opacity:0; transform:scale(0.96)} to{opacity:1; transform:scale(1)}}
+  .preview-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; border-bottom:1px solid var(--border);
+  }
+  .preview-header h2{font-size:15px; font-weight:500; color:var(--fg)}
+  .preview-header .badge{
+    font-size:11px; color:var(--accent); background:var(--accent-soft);
+    padding:2px 8px; border-radius:4px; margin-left:8px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .preview-close{
+    background:none; border:none; color:var(--fg-muted);
+    cursor:pointer; font-size:20px; padding:4px 8px; border-radius:4px;
+  }
+  .preview-close:hover{color:var(--danger); background:var(--danger-soft)}
+  .preview-body{
+    flex:1; overflow:auto; padding:20px;
+    background:var(--panel-2); display:flex; align-items:center; justify-content:center;
+    min-height:300px;
+  }
+  .preview-body img{
+    max-width:100%; max-height:60vh; object-fit:contain;
+    border:1px solid var(--border); border-radius:8px;
+    background:#fff; box-shadow:0 2px 12px rgba(0,0,0,0.08);
+  }
+  .preview-footer{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-top:1px solid var(--border); gap:12px;
+  }
+  .preview-info{font-size:12px; color:var(--fg-muted); font-family:'JetBrains Mono',monospace}
+  .preview-actions{display:flex; gap:8px}
+
   /* ========== Toast ========== */
   .toast-container{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
@@ -415,6 +462,15 @@
           <option value="1:1">1:1（正方形）</option>
         </select>
       </div>
+      <div class="setting-row">
+        <label style="display:block; margin-bottom:6px;">PNG 分辨率倍数</label>
+        <select id="pngScale">
+          <option value="1">1x（屏幕预览）</option>
+          <option value="2" selected>2x（PPT 标配）</option>
+          <option value="3">3x（高清打印）</option>
+          <option value="4">4x（超高清）</option>
+        </select>
+      </div>
     </div>
 
     <div class="section-block">
@@ -451,7 +507,35 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ========== Preview Modal ========== -->
+<div class="preview-overlay" id="previewOverlay">
+  <div class="preview-modal">
+    <div class="preview-header">
+      <div>
+        <h2>导出预览<span class="badge" id="previewBadge">SVG</span></h2>
+      </div>
+      <button class="preview-close" onclick="closePreview()">✕</button>
+    </div>
+    <div class="preview-body">
+      <img id="previewImg" alt="预览图">
+    </div>
+    <div class="preview-footer">
+      <div class="preview-info" id="previewInfo">--</div>
+      <div class="preview-actions">
+        <button class="btn" onclick="closePreview()">取消</button>
+        <button class="btn primary" id="previewConfirmBtn" onclick="confirmDownload()">确认下载</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// ============ 检测依赖库是否加载成功 ============
+if (typeof L === 'undefined') {
+  document.getElementById('emptyState').innerHTML = '<div style="font-size:14px; color:#d4675c; margin-bottom:8px; font-weight:500;">Leaflet 地图库加载失败</div><div style="font-size:12px; color:#8b95a5;">请检查网络连接，或尝试刷新页面<br>如果问题持续，请使用 VPN 或更换网络环境</div>';
+  throw new Error('Leaflet not loaded');
+}
+
 // ============ 初始化 Leaflet 地图 ============
 const map = L.map('map', {
   renderer: L.svg(),
@@ -462,6 +546,7 @@ const map = L.map('map', {
 const layers = [];
 const colors = ['#d4a574','#5fa8a8','#c8796b','#8b9d77','#b89ac9','#e0c878','#6b8cae','#cf8b7a'];
 let layerIdCounter = 0;
+let skipPreview = false;
 
 // ============ AI 提示词模板 ============
 const promptTemplates = {
@@ -1044,15 +1129,25 @@ function doExportSVG(selectedCount) {
   const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
-  const a = document.createElement('a');
-  a.href = url;
   const modeTag = outlineMode ? 'outline' : (selectedCount > 0 ? 'selected_' + selectedCount : 'all');
-  a.download = `geojson_${modeTag}_${Date.now()}.svg`;
-  a.click();
-  URL.revokeObjectURL(url);
-
+  const fileName = `geojson_${modeTag}_${Date.now()}.svg`;
   const modeText = outlineMode ? '轮廓' : '彩色';
-  showToast(selectedCount > 0 ? `已导出 ${selectedCount} 个区域 (${modeText}SVG)` : `SVG 已导出 (${modeText})`, 'success');
+  const infoText = `${selectedCount > 0 ? selectedCount + ' 个区域' : '全部'} · ${modeText} · ${ratio === 'original' ? '原始尺寸' : ratio}`;
+
+  const doDownload = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(selectedCount > 0 ? `已导出 ${selectedCount} 个区域 (${modeText}SVG)` : `SVG 已导出 (${modeText})`, 'success');
+  };
+
+  if (skipPreview) {
+    doDownload();
+  } else {
+    showPreview(url, 'SVG', fileName, infoText, doDownload);
+  }
 }
 
 // ============ 导出线稿 PNG ============
@@ -1171,7 +1266,7 @@ function doExportLineartPNG(selectedCount) {
 
   const img = new Image();
   img.onload = () => {
-    const scale = 2;
+    const scale = parseInt(document.getElementById('pngScale').value) || 2;
     const canvas = document.createElement('canvas');
     canvas.width = vbW * scale;
     canvas.height = vbH * scale;
@@ -1186,13 +1281,24 @@ function doExportLineartPNG(selectedCount) {
         return showToast('PNG 生成失败（画布可能被污染）', 'error');
       }
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `lineart_${selectedCount > 0 ? selectedCount + 'regions_' : ''}${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      URL.revokeObjectURL(svgUrl);
-      showToast(selectedCount > 0 ? `线稿 PNG 已导出 (${selectedCount} 个区域)` : '线稿 PNG 已导出', 'success');
+      const fileName = `lineart_${selectedCount > 0 ? selectedCount + 'regions_' : ''}${Date.now()}.png`;
+      const infoText = `${selectedCount > 0 ? selectedCount + ' 个区域' : '全部'} · 线稿 PNG · ${canvas.width}×${canvas.height}px`;
+
+      const doDownload = () => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(svgUrl);
+        showToast(selectedCount > 0 ? `线稿 PNG 已导出 (${selectedCount} 个区域)` : '线稿 PNG 已导出', 'success');
+      };
+
+      if (skipPreview) {
+        doDownload();
+      } else {
+        showPreview(url, 'PNG', fileName, infoText, doDownload);
+      }
     }, 'image/png');
   };
   img.onerror = () => {
@@ -1207,15 +1313,67 @@ function exportBatch() {
   if (layers.length === 0) return showToast('没有可导出的地图', 'error');
 
   showToast('正在批量导出 SVG + PNG...', 'info');
+  skipPreview = true;
 
   exportSVG();
 
   setTimeout(() => {
     exportLineartPNG();
+    setTimeout(() => { skipPreview = false; }, 3000);
   }, 2000);
 }
 
 // ============ Toast ============
+// ============ 导出预览 ============
+let pendingDownload = null;
+let pendingUrl = null;
+
+function showPreview(url, type, fileName, infoText, downloadCallback) {
+  // 如果有上一个待清理的预览 URL，先释放
+  if (pendingUrl && pendingUrl !== url) {
+    URL.revokeObjectURL(pendingUrl);
+  }
+  pendingUrl = url;
+  pendingDownload = downloadCallback;
+
+  document.getElementById('previewBadge').textContent = type;
+  document.getElementById('previewInfo').textContent = `${infoText} · ${fileName}`;
+  document.getElementById('previewImg').src = url;
+  document.getElementById('previewOverlay').classList.add('open');
+}
+
+function closePreview() {
+  document.getElementById('previewOverlay').classList.remove('open');
+  document.getElementById('previewImg').src = '';
+  pendingDownload = null;
+  // 延迟释放 URL，避免 img 还在引用
+  setTimeout(() => {
+    if (pendingUrl) {
+      URL.revokeObjectURL(pendingUrl);
+      pendingUrl = null;
+    }
+  }, 200);
+}
+
+function confirmDownload() {
+  if (pendingDownload) {
+    const cb = pendingDownload;
+    pendingDownload = null;
+    document.getElementById('previewOverlay').classList.remove('open');
+    document.getElementById('previewImg').src = '';
+    cb();
+    // URL 由回调内部释放，这里不清空 pendingUrl
+    pendingUrl = null;
+  }
+}
+
+// 按 ESC 关闭预览
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('previewOverlay').classList.contains('open')) {
+    closePreview();
+  }
+});
+
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
