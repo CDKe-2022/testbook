@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>三国字兵：合成塔防</title>
+<style>
+    body { font-family: 'Microsoft YaHei', sans-serif; background: #2c3e50; color: #ecf0f1; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    #game-container { width: 1200px; display: flex; flex-direction: column; gap: 15px; }
+    
+    /* 顶部状态栏 */
+    #top-bar { background: #34495e; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .stat-box { background: #2c3e50; padding: 8px 15px; border-radius: 5px; font-weight: bold; }
+    .stat-box span { color: #f39c12; }
+    
+    /* 主区域布局 */
+    #main-area { display: flex; gap: 15px; }
+    
+    /* 战场地图 */
+    #map-container { width: 800px; height: 500px; background: #1a252f; border: 2px solid #7f8c8d; position: relative; border-radius: 8px; overflow: hidden; }
+    .grid-cell { width: 50px; height: 50px; position: absolute; box-sizing: border-box; }
+    .path-cell { background: #7f8c8d; }
+    .build-cell { background: #34495e; border: 1px dashed #4a6278; cursor: pointer; }
+    .build-cell:hover { background: #3e5871; }
+    
+    /* 单位样式 */
+    .unit { position: absolute; width: 46px; height: 46px; line-height: 46px; text-align: center; font-weight: bold; border-radius: 4px; cursor: grab; user-select: none; transition: transform 0.1s; z-index: 10; }
+    .unit:hover { transform: scale(1.1); z-index: 20; }
+    .unit-enemy { color: #e74c3c; background: rgba(231, 76, 60, 0.2); border: 1px solid #c0392b; cursor: default; }
+    .unit-basic { color: #3498db; background: rgba(52, 152, 219, 0.2); border: 1px solid #2980b9; font-size: 18px;}
+    .unit-surname { color: #9b59b6; background: rgba(155, 89, 182, 0.2); border: 1px solid #8e44ad; font-size: 18px;}
+    .unit-name { color: #1abc9c; background: rgba(26, 188, 156, 0.2); border: 1px solid #16a085; font-size: 18px;}
+    .unit-hero { color: #f1c40f; background: rgba(241, 196, 15, 0.3); border: 2px solid #f39c12; font-size: 14px; box-shadow: 0 0 5px #f39c12; }
+    .unit-shovel { color: #95a5a6; background: rgba(149, 165, 166, 0.2); border: 1px solid #7f8c8d; font-size: 18px;}
+    
+    /* 血条 */
+    .hp-bar { position: absolute; top: -5px; left: 2px; width: 42px; height: 4px; background: #e74c3c; border-radius: 2px; }
+    .hp-fill { height: 100%; background: #2ecc71; border-radius: 2px; }
+
+    /* 右侧面板 */
+    #side-panel { width: 380px; background: #34495e; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+    #info-box { background: #2c3e50; padding: 10px; border-radius: 5px; font-size: 14px; height: 200px; overflow-y: auto; }
+    #info-box div { margin-bottom: 5px; border-bottom: 1px solid #3e5871; padding-bottom: 2px; }
+    .hero-card { background: #2c3e50; padding: 8px; border-radius: 5px; font-size: 12px; color: #bdc3c7; }
+    .hero-card b { color: #f1c40f; }
+
+    /* 底部招募区 */
+    #bottom-bar { background: #34495e; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    #recruit-area { display: flex; gap: 10px; }
+    .slot { width: 60px; height: 60px; background: #2c3e50; border: 2px dashed #7f8c8d; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: grab; user-select: none; }
+    .slot.empty { cursor: default; }
+    
+    #recruit-btn { padding: 15px 30px; background: #e67e22; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    #recruit-btn:hover { background: #d35400; }
+    #recruit-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
+    .drag-over { border-color: #f1c40f !important; background: #3e5871 !important; }
+    
+    /* 游戏结束遮罩 */
+    #game-over { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+    #game-over h1 { color: #e74c3c; font-size: 48px; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 顶部状态 -->
+    <div id="top-bar">
+        <div class="stat-box">主城血量: <span id="castle-hp">100</span>/100</div>
+        <div class="stat-box">金币: <span id="gold">50</span></div>
+        <div class="stat-box">当前地图: <span id="map-level">黄巾之乱</span></div>
+        <div class="stat-box">铲子: <span id="shovel-count">0</span>/3</div>
+        <button id="open-map-btn" disabled style="padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: not-allowed;">开辟新图</button>
+    </div>
+
+    <div id="main-area">
+        <!-- 战场 -->
+        <div id="map-container">
+            <div id="game-over"><h1>城破国亡！</h1><p id="survival-time"></p></div>
+        </div>
+
+        <!-- 右侧信息 -->
+        <div id="side-panel">
+            <div style="font-weight: bold; border-bottom: 1px solid #2c3e50; padding-bottom: 5px;">战况与图鉴</div>
+            <div id="info-box"></div>
+            <div class="hero-card">
+                <b>武将公式示例：</b><br>
+                关 + 羽 = 关羽 (群攻)<br>
+                张 + 飞 = 张飞 (震击)<br>
+                赵 + 云 = 赵云 (连击)<br>
+                <br>
+                <b>兵种升阶：</b><br>
+                弓 -> 弩 -> 射 -> 神射
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部招募 -->
+    <div id="bottom-bar">
+        <div id="recruit-area">
+            <div class="slot empty" data-index="0"></div>
+            <div class="slot empty" data-index="1"></div>
+            <div class="slot empty" data-index="2"></div>
+            <div class="slot empty" data-index="3"></div>
+            <div class="slot empty" data-index="4"></div>
+            <div class="slot empty" data-index="5"></div>
+        </div>
+        <button id="recruit-btn">招募 (花费 20 金币)</button>
+    </div>
+</div>
+
+<script>
+// --- 游戏配置数据 ---
+const TYPES = {
+    BASIC: ['弓', '刀', '枪', '骑'],
+    SURNAME: ['关', '张', '赵', '马', '黄', '吕', '诸'],
+    NAME: ['羽', '飞', '云', '超', '忠', '布', '亮'],
+    SHOVEL: ['铲']
+};
+
+const UPGRADE_TREE = {
+    '弓': '弩', '弩': '射', '射': '神射',
+    '刀': '剑', '剑': '斩', '斩': '绝斩',
+    '枪': '矛', '矛': '刺', '刺': '贯',
+    '骑': '驱', '驱': '驰', '驰': '铁骑'
+};
+
+const HERO_DB = {
+    '关羽': { type: 'hero', skill: '横扫千军', dmg: 50, range: 120, atkSpeed: 1200, color: '#f1c40f' },
+    '张飞': { type: 'hero', skill: '燕人咆哮', dmg: 40, range: 80, atkSpeed: 1000, color: '#e74c3c' },
+    '赵云': { type: 'hero', skill: '龙胆突刺', dmg: 30, range: 100, atkSpeed: 400, color: '#3498db' },
+    '吕布': { type: 'hero', skill: '天下无双', dmg: 80, range: 100, atkSpeed: 800, color: '#9b59b6' },
+    '诸葛亮':{ type: 'hero', skill: '八阵图', dmg: 10, range: 150, atkSpeed: 1500, color: '#2ecc71' }
+};
+
+// 基础兵种属性
+const UNIT_STATS = {
+    '弓': { dmg: 10, range: 100, atkSpeed: 1000 }, '弩': { dmg: 25, range: 110, atkSpeed: 900 }, '射': { dmg: 60, range: 120, atkSpeed: 800 }, '神射': { dmg: 150, range: 150, atkSpeed: 700 },
+    '刀': { dmg: 15, range: 50, atkSpeed: 800 }, '剑': { dmg: 35, range: 55, atkSpeed: 750 }, '斩': { dmg: 80, range: 60, atkSpeed: 700 }, '绝斩': { dmg: 180, range: 70, atkSpeed: 600 },
+    '枪': { dmg: 12, range: 70, atkSpeed: 1200 }, '矛': { dmg: 30, range: 80, atkSpeed: 1100 }, '刺': { dmg: 70, range: 90, atkSpeed: 1000 }, '贯': { dmg: 160, range: 100, atkSpeed: 900 },
+    '骑': { dmg: 20, range: 50, atkSpeed: 600 }, '驱': { dmg: 45, range: 55, atkSpeed: 500 }, '驰': { dmg: 90, range: 60, atkSpeed: 400 }, '铁骑': { dmg: 200, range: 70, atkSpeed: 300 }
+};
+
+// --- 游戏状态 ---
+let state = {
+    gold: 50,
+    castleHp: 100,
+    mapLevel: 1,
+    shovels: 0,
+    units: [], // 我方单位
+    enemies: [], // 敌方单位
+    bullets: [], // 简单特效用
+    enemyIdCounter: 0,
+    unitIdCounter: 0,
+    isGameOver: false
+};
+
+// --- DOM 元素 ---
+const mapContainer = document.getElementById('map-container');
+const recruitArea = document.getElementById('recruit-area');
+const goldEl = document.getElementById('gold');
+const hpEl = document.getElementById('castle-hp');
+const shovelEl = document.getElementById('shovel-count');
+const infoBox = document.getElementById('info-box');
+const gameoverDiv = document.getElementById('game-over');
+
+// --- 地图定义 ---
+const MAPS = [
+    { name: "黄巾之乱", path: [{x: 0, y: 100}, {x: 700, y: 100}, {x: 700, y: 300}, {x: 0, y: 300}] },
+    { name: "虎牢关", path: [{x: 0, y: 50}, {x: 400, y: 50}, {x: 400, y: 450}, {x: 800, y: 450}] }
+];
+
+// 绘制地图网格和路径
+function drawMap() {
+    mapContainer.innerHTML = '<div id="game-over"><h1>城破国亡！</h1></div>'; // reset
+    const mapData = MAPS[(state.mapLevel - 1) % MAPS.length];
+    const pathPoints = mapData.path;
+    
+    // 创建路径上的网格 (简化版：用绝对定位的方块表示路径和建筑点)
+    // 为了演示，我们只画出建筑点
+    const buildSpots = [];
+    for(let y=50; y<500; y+=50) {
+        for(let x=50; x<800; x+=50) {
+            // 简单判断是否离路径线足够远，作为可建筑点
+            let isPath = false;
+            for(let i=0; i<pathPoints.length-1; i++) {
+                const p1 = pathPoints[i], p2 = pathPoints[i+1];
+                if (p1.y === p2.y && y > p1.y - 40 && y < p1.y + 40 && x >= Math.min(p1.x,p2.x)-20 && x <= Math.max(p1.x,p2.x)+20) isPath = true;
+                if (p1.x === p2.x && x > p1.x - 40 && x < p1.x + 40 && y >= Math.min(p1.y,p2.y)-20 && y <= Math.max(p1.y,p2.y)+20) isPath = true;
+            }
+            if (!isPath) {
+                buildSpots.push({x, y});
+                const div = document.createElement('div');
+                div.className = 'grid-cell build-cell';
+                div.style.left = (x - 25) + 'px';
+                div.style.top = (y - 25) + 'px';
+                div.dataset.x = x;
+                div.dataset.y = y;
+                mapContainer.appendChild(div);
+            }
+        }
+    }
+    
+    // 画终点
+    const endP = pathPoints[pathPoints.length-1];
+    const endDiv = document.createElement('div');
+    endDiv.style.position = 'absolute';
+    endDiv.style.left = (endP.x - 25) + 'px';
+    endDiv.style.top = (endP.y - 25) + 'px';
+    endDiv.style.width = '50px';
+    endDiv.style.height = '50px';
+    endDiv.style.background = '#e74c3c';
+    endDiv.style.textAlign = 'center';
+    endDiv.style.lineHeight = '50px';
+    endDiv.style.fontWeight = 'bold';
+    endDiv.innerText = '城';
+    mapContainer.appendChild(endDiv);
+}
+
+// --- 招募系统 ---
+function recruit() {
+    if (state.gold < 20) {
+        log("金币不足！", "red");
+        return;
+    }
+    state.gold -= 20;
+    updateUI();
+    
+    // 清空旧的
+    document.querySelectorAll('.slot').forEach(s => {
+        s.innerHTML = '';
+        s.classList.add('empty');
+    });
+
+    // 概率池
+    for (let i = 0; i < 6; i++) {
+        const rand = Math.random();
+        let char, type;
+        if (rand < 0.60) {
+            char = TYPES.BASIC[Math.floor(Math.random() * TYPES.BASIC.length)];
+            type = 'basic';
+        } else if (rand < 0.80) {
+            char = TYPES.SURNAME[Math.floor(Math.random() * TYPES.SURNAME.length)];
+            type = 'surname';
+        } else if (rand < 0.95) {
+            char = TYPES.NAME[Math.floor(Math.random() * TYPES.NAME.length)];
+            type = 'name';
+        } else {
+            char = '铲';
+            type = 'shovel';
+        }
+        createSlotChar(i, char, type);
+    }
+}
+
+function createSlotChar(index, char, type) {
+    const slot = document.querySelector(`.slot[data-index="${index}"]`);
+    slot.classList.remove('empty');
+    
+    const el = document.createElement('div');
+    el.className = `unit unit-${type}`;
+    if (type === 'shovel') el.style.cursor = 'pointer'; // 铲子点击使用
+    el.innerText = char;
+    el.dataset.char = char;
+    el.dataset.type = type;
+    
+    // 铲子直接点击收集
+    if (char === '铲') {
+        el.addEventListener('click', () => {
+            state.shovels++;
+            slot.innerHTML = '';
+            slot.classList.add('empty');
+            log("获得一把铲子！", "green");
+            updateUI();
+        });
+        slot.appendChild(el);
+        return;
+    }
+
+    // 拖拽逻辑
+    el.draggable = true;
+    el.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('source', 'slot');
+        e.dataTransfer.setData('char', char);
+        e.dataTransfer.setData('type', type);
+        e.dataTransfer.setData('index', index);
+    });
+    
+    slot.appendChild(el);
+}
+
+// --- 部署与合成系统 ---
+// 处理拖拽放置到地图
+mapContainer.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const target = e.target;
+    if (target.classList.contains('build-cell')) {
+        target.classList.add('drag-over');
+    }
+});
+
+mapContainer.addEventListener('dragleave', (e) => {
+    if (e.target.classList.contains('build-cell')) {
+        e.target.classList.remove('drag-over');
+    }
+});
+
+mapContainer.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const target = e.target;
+    if (!target.classList.contains('build-cell')) return;
+    
+    target.classList.remove('drag-over');
+    const x = parseInt(target.dataset.x);
+    const y = parseInt(target.dataset.y);
+    
+    const source = e.dataTransfer.getData('source');
+    const char = e.dataTransfer.getData('char');
+    const type = e.dataTransfer.getData('type');
+    
+    if (source === 'slot') {
+        const index = e.dataTransfer.getData('index');
+        // 从候选区移除
+        const slot = document.querySelector(`.slot[data-index="${index}"]`);
+        slot.innerHTML = '';
+        slot.classList.add('empty');
+        // 部署到地图
+        deployUnit(char, type, x, y, null);
+    }
+});
+
+// 处理地图内拖拽合成
+let draggingUnit = null;
+document.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('unit') && !e.target.classList.contains('unit-enemy') && e.target.parentElement.id === 'map-container') {
+        draggingUnit = e.target;
+    }
+});
+
+document.addEventListener('mousemove', (e) => {
+    // 这里如果需要平滑拖拽可以写逻辑，为了简化我们用点击合成：
+    // 实际开发中合成可以用拖拽，这里简化为：点击源，再点击目标。
+});
+
+// 简化版合成：点击两个单位
+let selectedUnit = null;
+mapContainer.addEventListener('click', (e) => {
+    const target = e.target;
+    
+    // 点击地图上的我方单位
+    if (target.classList.contains('unit') && !target.classList.contains('unit-enemy')) {
+        if (selectedUnit) {
+            // 合成尝试
+            tryCombine(selectedUnit, target);
+            selectedUnit.style.border = '';
+            selectedUnit = null;
+        } else {
+            selectedUnit = target;
+            target.style.border = '2px solid #f1c40f';
+        }
+    } else {
+        if (selectedUnit) {
+            selectedUnit.style.border = '';
+            selectedUnit = null;
+        }
+    }
+});
+
+function tryCombine(u1El, u2El) {
+    const u1 = state.units.find(u => u.id == u1El.dataset.id);
+    const u2 = state.units.find(u => u.id == u2El.dataset.id);
+    if (!u1 || !u2) return;
+
+    const char1 = u1.char, char2 = u2.char;
+    const combinedStr = char1 + char2;
+
+    // 1. 检查是否是武将拼字
+    if (HERO_DB[combinedStr]) {
+        log(`✨ ${combinedStr} 降临！`, "gold");
+        // 删除两个旧单位
+        removeUnit(u1);
+        removeUnit(u2);
+        // 生成武将
+        deployUnit(combinedStr, 'hero', u2.x, u2.y, HERO_DB[combinedStr]);
+        return;
+    }
+    
+    // 2. 检查是否是反序拼字 (羽+关)
+    const reverseStr = char2 + char1;
+    if (HERO_DB[reverseStr]) {
+        log(`✨ ${reverseStr} 降临！`, "gold");
+        removeUnit(u1);
+        removeUnit(u2);
+        deployUnit(reverseStr, 'hero', u2.x, u2.y, HERO_DB[reverseStr]);
+        return;
+    }
+
+    // 3. 检查是否是相同基础兵种升阶
+    if (char1 === char2 && UPGRADE_TREE[char1]) {
+        const newChar = UPGRADE_TREE[char1];
+        log(`${char1} 合成为 ${newChar}！`, "blue");
+        removeUnit(u1);
+        removeUnit(u2);
+        deployUnit(newChar, 'basic', u2.x, u2.y, null);
+        return;
+    }
+
+    // 4. 失败：弹回 (这里因为是点击合成，没有位置移动，所以逻辑上不发生改变，只提示)
+    log("无法组成武将或升阶，字已退还！", "red");
+    // 原本拖拽失败弹回的视觉效果，在点击模式下不需要
+}
+
+function deployUnit(char, type, x, y, heroData) {
+    const id = ++state.unitIdCounter;
+    let stats;
+    if (type === 'hero') {
+        stats = { ...heroData };
+    } else if (UPGRADE_TREE[char] || UNIT_STATS[char]) {
+        stats = { ...UNIT_STATS[char], type: 'basic' };
+    } else {
+        // 姓氏或名字字部署，无攻击力
+        stats = { dmg: 0, range: 0, atkSpeed: 999999, type: type };
+    }
+    
+    const unit = {
+        id, char, type: stats.type || type, x, y,
+        dmg: stats.dmg, range: stats.range, atkSpeed: stats.atkSpeed,
+        lastAtk: 0, el: null
+    };
+    
+    const el = document.createElement('div');
+    el.className = `unit unit-${unit.type === 'hero' ? 'hero' : (type === 'surname' ? 'surname' : (type === 'name' ? 'name' : 'basic'))}`;
+    el.innerText = char;
+    el.style.left = (x - 23) + 'px';
+    el.style.top = (y - 23) + 'px';
+    el.dataset.id = id;
+    
+    mapContainer.appendChild(el);
+    unit.el = el;
+    state.units.push(unit);
+}
+
+function removeUnit(u) {
+    u.el.remove();
+    state.units = state.units.filter(unit => unit.id !== u.id);
+}
+
+// --- 敌人与战斗系统 ---
+function spawnEnemy() {
+    if (state.isGameOver) return;
+    const mapData = MAPS[(state.mapLevel - 1) % MAPS.length];
+    const startP = mapData.path[0];
+    
+    const id = ++state.enemyIdCounter;
+    const isZhu = Math.random() < 0.2;
+    const hp = isZhu ? 100 : 50;
+    const speed = isZhu ? 0.5 : 1;
+    const char = isZhu ? '卒' : '兵';
+    
+    const enemy = {
+        id, char, x: startP.x, y: startP.y,
+        hp: hp, maxHp: hp, speed: speed,
+        pathIndex: 0, el: null
+    };
+    
+    const el = document.createElement('div');
+    el.className = 'unit unit-enemy';
+    el.innerText = char;
+    el.style.left = (enemy.x - 23) + 'px';
+    el.style.top = (enemy.y - 23) + 'px';
+    
+    const hpBar = document.createElement('div');
+    hpBar.className = 'hp-bar';
+    const hpFill = document.createElement('div');
+    hpFill.className = 'hp-fill';
+    hpFill.style.width = '100%';
+    hpBar.appendChild(hpFill);
+    el.appendChild(hpBar);
+    
+    mapContainer.appendChild(el);
+    enemy.el = el;
+    enemy.hpFillEl = hpFill;
+    
+    state.enemies.push(enemy);
+}
+
+function updateGame() {
+    if (state.isGameOver) return;
+
+    // 1. 敌人移动
+    const mapData = MAPS[(state.mapLevel - 1) % MAPS.length];
+    state.enemies.forEach(e => {
+        if (e.pathIndex < mapData.path.length - 1) {
+            const targetP = mapData.path[e.pathIndex + 1];
+            const dx = targetP.x - e.x;
+            const dy = targetP.y - e.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < e.speed * 2) {
+                e.pathIndex++;
+            } else {
+                e.x += (dx / dist) * e.speed;
+                e.y += (dy / dist) * e.speed;
+            }
+            e.el.style.left = (e.x - 23) + 'px';
+            e.el.style.top = (e.y - 23) + 'px';
+        } else {
+            // 到达终点
+            state.castleHp -= 10;
+            removeEnemy(e);
+            if (state.castleHp <= 0) gameOver();
+        }
+    });
+
+    // 2. 我方攻击
+    const now = Date.now();
+    state.units.forEach(u => {
+        if (u.dmg === 0) return; // 姓名字不攻击
+        
+        // 找最近的敌人 (简化：找距离最近的)
+        let target = null;
+        let minDist = u.range;
+        state.enemies.forEach(e => {
+            const dx = e.x - u.x;
+            const dy = e.y - u.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < minDist) {
+                minDist = dist;
+                target = e;
+            }
+        });
+        
+        if (target && now - u.lastAtk > u.atkSpeed) {
+            u.lastAtk = now;
+            // 攻击特效 (简单闪一下)
+            u.el.style.transform = "scale(1.3)";
+            setTimeout(() => { if(u.el) u.el.style.transform = "scale(1)"; }, 100);
+            
+            target.hp -= u.dmg;
+            target.hpFillEl.style.width = (target.hp / target.maxHp * 100) + '%';
+            
+            if (target.hp <= 0) {
+                state.gold += target.char === '卒' ? 15 : 10;
+                removeEnemy(target);
+                updateUI();
+            }
+        }
+    });
+}
+
+function removeEnemy(e) {
+    e.el.remove();
+    state.enemies = state.enemies.find(en => en.id !== e.id);
+    state.enemies = state.enemies.filter(en => en.id !== e.id);
+}
+
+function gameOver() {
+    state.isGameOver = true;
+    gameoverDiv.style.display = 'flex';
+}
+
+// --- UI 更新与日志 ---
+function updateUI() {
+    goldEl.innerText = state.gold;
+    hpEl.innerText = Math.max(0, state.castleHp);
+    shovelEl.innerText = state.shovels;
+    
+    const openBtn = document.getElementById('open-map-btn');
+    if (state.shovels >= 3) {
+        openBtn.disabled = false;
+        openBtn.style.cursor = 'pointer';
+        openBtn.style.background = '#e67e22';
+    } else {
+        openBtn.disabled = true;
+        openBtn.style.cursor = 'not-allowed';
+        openBtn.style.background = '#95a5a6';
+    }
+}
+
+function log(msg, color = "white") {
+    const div = document.createElement('div');
+    div.style.color = color;
+    div.innerText = msg;
+    infoBox.prepend(div);
+    if (infoBox.children.length > 10) infoBox.lastChild.remove();
+}
+
+// --- 开图逻辑 ---
+document.getElementById('open-map-btn').addEventListener('click', () => {
+    if (state.shovels < 3) return;
+    state.shovels = 0;
+    state.mapLevel++;
+    state.castleHp = 100;
+    state.enemies.forEach(e => e.el.remove());
+    state.enemies = [];
+    state.units.forEach(u => u.el.remove());
+    state.units = [];
+    
+    const mapData = MAPS[(state.mapLevel - 1) % MAPS.length];
+    document.getElementById('map-level').innerText = mapData.name;
+    log(`开辟新图：${mapData.name}！`, "green");
+    drawMap();
+    updateUI();
+});
+
+// --- 初始化 ---
+document.getElementById('recruit-btn').addEventListener('click', recruit);
+drawMap();
+updateUI();
+log("游戏开始！点击招募获取文字。", "yellow");
+log("点击文字选中，再点击地图上的另一个文字可尝试合成。", "white");
+
+// 游戏主循环
+setInterval(updateGame, 16); // ~60fps
+setInterval(spawnEnemy, 2000); // 每2秒刷一个怪
+
+</script>
+</body>
+</html>
